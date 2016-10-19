@@ -1,0 +1,16 @@
+language: scala
+
+scala: 2.11.8
+
+jdk: oraclejdk8
+
+script: sbt clean coverage test
+
+after_success: sbt coverageReport coveralls
+
+notifications:
+  slack:
+    on_success: never
+    on_failure: always
+    rooms:
+      secure: "ZkG0Ru1NcqJdGuf6gesro4xhAwU/zYCrU3FUOksYMtsdhd+SbVwLNXLlcBXZRQmsPKOPfC6McEyO6jc5Y05SXBkTNBzOw8Fe/bxEbBKYnxLQY7QrimfMstDu5Rz7xksNGDGiVxwXR+OtF3ixS6hzCR1rrHDrYmFQ/lPMGU+kyTJ54Vu81CBrhNbbuhswMx2N+QFLQDv090o8PgXa6YJJRo4k2qReQcZ6h7cCMVgfqzuJda/kmShl6HnOU4RjsIT5TLYWobLFdTJzPQdjtpASdwJyu2LAjF72BeO5jlNNp5eufrkRCaFbSt+NEYXV63DQqSb0QrPmur/n8M4RgumReDxNK3wPqrL4TanLsMcmTMEzVt2/GKJvt1HEila9HdLiZBhhDjV5NaekEbMmxh9azwUN2xpP6wlHbe3TkZsnly1r5V62hKePXP61Gatlp1HIXIGvfyLCDDyrvVzy1K+EELi3qDD865xgMJFB8BfRth6DUTzuc46Sqv/Iq03edp6VVUh9LUzrp4pU2BLsjMHU/aii+e5eoeqHLOzTphkZByg07z2zv9Jk27vgR1PO4G+LVV4l3RJVT8bU4mzV5ONX4k9Ss2UGaMQbvtao0hQGAo6XdRDyh3NfJVq/YG+vcDJZjOOsaUxlZRv2XWFpX6eiEu3sxYCz3kscmV0359HDeQ8="
