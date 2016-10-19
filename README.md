@@ -8,7 +8,7 @@ How to use
 
 Add the following resolver
 
-    Resolver.bintrayRepo("owner", "repo")
+    Resolver.bintrayRepo("evolutiongaming", "maven")
     
 Add the libraty to your dependencies list
 
