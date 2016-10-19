@@ -7,11 +7,11 @@ How to use
 
 Add the following resolver
 
-    Resolver.bintrayRepo("evolutiongaming", "maven")
+    resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
     
 Add the library to your dependencies list
 
-    libraryDependencies += "com.evolutiongaming.kryo" %% "kryo-macros" % 1.0.0
+    libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.0.0"
     
 Generate some serializers for your case classes
     
