@@ -44,3 +44,4 @@ Examples
 
 For more examples, please, check out 
 [SerializerMacroSpec](https://github.com/evolution-gaming/kryo-macros/tree/master/src/test/scala/com/evolutiongaming/kryo/SerializerMacroSpec.scala)
+
