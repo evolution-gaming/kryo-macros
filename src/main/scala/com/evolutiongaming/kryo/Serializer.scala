@@ -52,8 +52,13 @@ object Serializer {
           lazy val implSerializer = findImplicitSerializer(tpe)
           if (tpe.widen =:= universe.definitions.BooleanTpe) {
             q"output.writeBoolean($arg)"
+          } else if (tpe.widen =:= universe.definitions.ByteTpe) {
+            q"output.writeInt($arg.toInt)"
+          } else if (tpe.widen =:= universe.definitions.CharTpe) {
+            q"output.writeInt($arg.toInt)"
+          } else if (tpe.widen =:= universe.definitions.ShortTpe) {
+            q"output.writeInt($arg.toInt)"
           } else if (tpe.widen weak_<:< universe.definitions.IntTpe) {
-            // handle Byte, Short, Char, Int
             q"output.writeInt($arg)"
           } else if (tpe.widen =:= universe.definitions.LongTpe) {
             q"output.writeLong($arg)"
