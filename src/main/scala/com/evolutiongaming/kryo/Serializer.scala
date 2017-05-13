@@ -126,6 +126,12 @@ object Serializer {
           lazy val implSerializer = findImplicitSerializer(tpe)
           if (tpe.widen =:= universe.definitions.BooleanTpe) {
             q"input.readBoolean"
+          } else if (tpe.widen =:= universe.definitions.ByteTpe) {
+            q"input.readInt.toByte"
+          } else if (tpe.widen =:= universe.definitions.CharTpe) {
+            q"input.readInt.toChar"
+          } else if (tpe.widen =:= universe.definitions.ShortTpe) {
+            q"input.readInt.toShort"
           } else if (tpe.widen =:= universe.definitions.IntTpe) {
             q"input.readInt"
           } else if (tpe.widen weak_<:< universe.definitions.IntTpe) {

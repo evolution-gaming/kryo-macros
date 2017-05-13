@@ -62,9 +62,9 @@ class SerializerMacroSpec extends WordSpec with Matchers {
 
   "Serializer" should {
     s"serialize and deserialize primitives" in {
-      case class Primitives(b: Byte, s: Short, i: Int, l: Long, bl: Boolean, ch: Char)
+      case class Primitives(b: Byte, s: Short, i: Int, l: Long, bl: Boolean, ch: Char, double: Double, f: Float)
 
-      verify(Serializer.make[Primitives], Primitives(1, 2, 3, 4, true, 'V'))
+      verify(Serializer.make[Primitives], Primitives(1, 2, 3, 4, true, 'V', 1.1, 2.2f))
     }
 
     s"serialize and deserialize standard types" in {
@@ -253,11 +253,11 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       * that should be used inside [[Serializer.makeCommon]] macro, accordingly.
       */
     s"serialize and deserialize Algebraic Data Types using Serializer.inner macros" in {
-      trait ColorType
+      sealed trait ColorType
       case object Red extends ColorType
       case object Black extends ColorType
 
-      trait AlgebraicDataType
+      sealed trait AlgebraicDataType
       case class B(a: String) extends AlgebraicDataType
       case class C(a: String) extends AlgebraicDataType
       case class D(a: ColorType) extends AlgebraicDataType
