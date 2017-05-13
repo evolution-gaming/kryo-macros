@@ -62,6 +62,10 @@ object Serializer {
             q"output.writeInt($arg)"
           } else if (tpe.widen =:= universe.definitions.LongTpe) {
             q"output.writeLong($arg)"
+          } else if (tpe.widen =:= universe.definitions.DoubleTpe) {
+            q"output.writeDouble($arg)"
+          } else if (tpe.widen =:= universe.definitions.FloatTpe) {
+            q"output.writeFloat($arg)"
           } else if (tpe.widen =:= typeOf[String]) {
             q"output.writeString($arg)"
           } else if (tpe =:= typeOf[BigDecimal]) {
@@ -139,6 +143,10 @@ object Serializer {
             q"input.readInt.asInstanceOf[${tpe.widen}]"
           } else if (tpe.widen =:= universe.definitions.LongTpe) {
             q"input.readLong"
+          } else if (tpe.widen =:= universe.definitions.DoubleTpe) {
+            q"input.readDouble"
+          } else if (tpe.widen =:= universe.definitions.FloatTpe) {
+            q"input.readFloat"
           } else if (tpe.widen =:= typeOf[String]) {
             q"input.readString"
           } else if (tpe =:= typeOf[BigDecimal]) {
