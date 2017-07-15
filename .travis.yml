@@ -4,9 +4,9 @@ scala: 2.11.11
 
 jdk: oraclejdk8
 
-script: sbt clean coverage test
+script: sbt ++$TRAVIS_SCALA_VERSION clean coverage test
 
-after_success: sbt coverageReport coveralls
+after_success: sbt ++$TRAVIS_SCALA_VERSION coverageReport coveralls
 
 notifications:
   slack:
