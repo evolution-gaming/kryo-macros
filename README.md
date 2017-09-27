@@ -43,5 +43,13 @@ Examples
 ========
 
 For more examples, please, check out 
-[SerializerMacroSpec](https://github.com/evolution-gaming/kryo-macros/tree/master/src/test/scala/com/evolutiongaming/kryo/SerializerMacroSpec.scala)
+[SerializerMacroSpec](https://github.com/evolution-gaming/kryo-macros/tree/master/macros/src/test/scala/com/evolutiongaming/kryo/SerializerMacroSpec.scala)
 
+Benchmarks
+==========
+
+Run benchmarks
+
+```
+sbt -no-colors clean 'benchmark/jmh:run -prof gc .*SerializerBenchmark.*' >results.txt
+```
