@@ -35,7 +35,10 @@ object Serializer {
       import c.universe._
       val tpe = weakTypeOf[A]
 
+      def companion(tpe: Type) = Ident(tpe.typeSymbol.companion)
+
       def isValueClass(tpe: Type) = tpe <:< typeOf[AnyVal] && tpe.typeSymbol.asClass.isDerivedValueClass
+
       def valueClassArgType(tpe: Type) = {
         // for value classes, first class declaration is its single field value
         tpe.decls.head.asMethod.returnType
@@ -177,12 +180,33 @@ object Serializer {
             val List(kt, vt) = tpe.typeArgs.map(_.dealias)
             val kf = genReader(kt)
             val vf = genReader(vt)
-            q"scala.collection.Iterable.fill[($kt, $vt)](input.readInt)(($kf, $vf)).toMap"
+            val comp = companion(tpe)
+            q"""
+               val size = input.readInt
+               var map = $comp.empty[$kt, $vt]
+               var i = 0
+               while (i < size) {
+                 map = map.updated($kf, $vf)
+                 i += 1
+               }
+               map
+             """
           } else if (tpe <:< typeOf[Iterable[_]]) {
             val t = tpe.typeArgs.head.dealias
             val f = genReader(t)
-            val ctor = tpe.typeConstructor
-            q"scala.collection.Iterable.fill[$t](input.readInt)($f).to[$ctor]"
+            val comp = companion(tpe)
+            q"""
+               val size = input.readInt
+               if (size > 0) {
+                 val builder = $comp.newBuilder[$t]
+                 var i = 0
+                 do {
+                   builder += $f
+                   i += 1
+                 } while (i < size)
+                 builder.result
+               } else $comp.empty[$t]
+             """
           } else if (isValueClass(tpe)) {
             val reader = genReader(valueClassArgType(tpe))
             q"new $tpe($reader)"
