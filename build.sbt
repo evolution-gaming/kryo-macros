@@ -45,6 +45,7 @@ lazy val benchmark = project
     name := "kryo-benchmark",
     publish := (),
     libraryDependencies ++= Seq(
-      "pl.project13.scala" % "sbt-jmh-extras" % "0.2.27"
+      "pl.project13.scala" % "sbt-jmh-extras" % "0.2.27",
+      "org.scalatest" %% "scalatest" % "3.0.3" % Test
     )
   ).dependsOn(macros)

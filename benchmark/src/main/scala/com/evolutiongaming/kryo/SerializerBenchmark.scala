@@ -21,15 +21,10 @@ class SerializerBenchmark {
   private val iterablesSerializer = Serializer.make[Iterables]
   private val mapsSerializer = Serializer.make[Maps]
   private val primitivesSerializer = Serializer.make[Primitives]
-  private val anyRefsObj = AnyRefs("s", 1, Some("os"))
-  private val iterablesObj = Iterables(List("1", "2", "3"), Set(4, 5, 6), List(Set(1, 2), Set()))
-  private val mapsObj = Maps(Map("1" -> 1.1, "2" -> 2.2), Map(1 -> Map(3L -> 3.3), 2 -> Map.empty[Long, Double]))
-  private val primitivesObj = Primitives(1, 2, 3, 4, bl = true, 'V', 1.1, 2.2f)
-
-  require(writeThanReadAnyRefs() == anyRefsObj)
-  require(writeThanReadIterables() == iterablesObj)
-  require(writeThanReadMaps() == mapsObj)
-  require(writeThanReadPrimitives() == primitivesObj)
+  val anyRefsObj = AnyRefs("s", 1, Some("os"))
+  val iterablesObj = Iterables(List("1", "2", "3"), Set(4, 5, 6), List(Set(1, 2), Set()))
+  val mapsObj = Maps(Map("1" -> 1.1, "2" -> 2.2), Map(1 -> Map(3L -> 3.3), 2 -> Map.empty[Long, Double]))
+  val primitivesObj = Primitives(1, 2, 3, 4, bl = true, 'V', 1.1, 2.2f)
 
   @Benchmark
   def writeThanReadAnyRefs(): AnyRefs = writeThanRead(anyRefsSerializer, anyRefsObj)
