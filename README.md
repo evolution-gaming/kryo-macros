@@ -6,19 +6,16 @@ How to use
 ===========
 
 Add the following resolver
-
 ```sbt
 resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 ```
     
 Add the library to your dependencies list
-
 ```sbt
-libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.0.0"
+libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.1.4"
 ```
     
 Generate some serializers for your case classes
-    
 ```scala
 import com.evolutiongaming.kryo.Serializer
 
@@ -53,7 +50,6 @@ Benchmarks
 ==========
 
 Run benchmarks
-
-```sbt
+```sh
 sbt -no-colors clean 'benchmark/jmh:run -prof gc .*SerializerBenchmark.*' >results.txt
 ```
