@@ -6,7 +6,7 @@ import com.esotericsoftware.kryo
 import org.joda.time.DateTime
 
 import scala.annotation.compileTimeOnly
-import scala.collection.immutable.{IntMap, LongMap}
+import scala.collection.immutable.{BitSet, IntMap, LongMap}
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.language.experimental.macros
@@ -115,6 +115,8 @@ object Serializer {
             val kf = genWriter(kt.dealias, q"kv._1")
             val vf = genWriter(vt.dealias, q"kv._2")
             q"output.writeInt($arg.size); $arg.foreach { kv => $kf; $vf }"
+          } else if (tpe <:< typeOf[BitSet] || tpe <:< typeOf[mutable.BitSet]) {
+            q"val bits = $arg.toBitMask; output.writeInt(bits.length); output.writeLongs(bits, true)"
           } else if (tpe <:< typeOf[Iterable[_]]) {
             val t = tpe.typeArgs.head.dealias
             val f = genWriter(t, q"a")
@@ -250,6 +252,13 @@ object Serializer {
                  i += 1
                }
                map
+             """
+          } else if (tpe <:< typeOf[BitSet] || tpe <:< typeOf[mutable.BitSet]) {
+            val comp = companion(tpe)
+            q"""
+               val len = input.readInt
+               if (len > 0) $comp.fromBitMaskNoCopy(input.readLongs(len, true))
+               else $comp.empty
              """
           } else if (tpe <:< typeOf[Iterable[_]]) {
             val t = tpe.typeArgs.head.dealias

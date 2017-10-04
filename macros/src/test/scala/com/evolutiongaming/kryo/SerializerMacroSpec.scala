@@ -10,7 +10,7 @@ import com.esotericsoftware.{kryo => k}
 import org.joda.time.DateTime
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.collection.immutable.{IntMap, LongMap}
+import scala.collection.immutable.{BitSet, IntMap, LongMap}
 import scala.collection.mutable
 import scala.concurrent.duration._
 
@@ -120,6 +120,12 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       case class IntAndLongMaps(m1: IntMap[String], m2: LongMap[Double], m3: mutable.LongMap[Int])
 
       verify(Serializer.make[IntAndLongMaps], IntAndLongMaps(IntMap(1 -> "one"), LongMap(2L -> 2.2), mutable.LongMap(3L -> 3)))
+    }
+
+    s"serialize and deserialize BitSet types" in {
+      case class BitSets(b1: BitSet, b2: mutable.BitSet)
+
+      verify(Serializer.make[BitSets], BitSets(BitSet(1, 2, 3), mutable.BitSet(1001, 1002, 1003)))
     }
 
     s"serialize and deserialize respecting field annotations" in {
