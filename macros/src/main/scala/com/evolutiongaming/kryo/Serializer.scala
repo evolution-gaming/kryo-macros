@@ -6,6 +6,7 @@ import com.esotericsoftware.kryo
 import org.joda.time.DateTime
 
 import scala.annotation.compileTimeOnly
+import scala.collection.immutable.{IntMap, LongMap}
 import scala.collection.mutable
 import scala.concurrent.duration.FiniteDuration
 import scala.language.experimental.macros
@@ -89,8 +90,7 @@ object Serializer {
               q"""output.writeString(if ($arg.isEmpty) "" else $arg.get.$value)"""
             } else {
               val f = genWriter(typeArg, q"a")
-              q"""output.writeInt($arg.size)
-                  $arg.foreach(a => $f)"""
+              q"output.writeInt($arg.size); $arg.foreach(a => $f)"
             }
           } else if (tpe <:< typeOf[Either[_, _]]) {
             val List(lt, rt) = tpe.typeArgs
@@ -102,20 +102,23 @@ object Serializer {
                  case Right(r) => output.writeInt(1); $rf
                }
              """
-          } else if (tpe <:< typeOf[Map[_, _]]) {
+          } else if (tpe <:< typeOf[mutable.LongMap[_]] || tpe <:< typeOf[LongMap[_]]) {
+            val t = tpe.typeArgs.head.dealias
+            val f = genWriter(t, q"kv._2")
+            q"output.writeInt($arg.size); $arg.foreach { kv => output.writeLong(kv._1); $f }"
+          } else if (tpe <:< typeOf[IntMap[_]]) {
+            val t = tpe.typeArgs.head.dealias
+            val f = genWriter(t, q"kv._2")
+            q"output.writeInt($arg.size); $arg.foreach { kv => output.writeInt(kv._1); $f }"
+          } else if (tpe <:< typeOf[mutable.Map[_, _]] || tpe <:< typeOf[Map[_, _]]) {
             val List(kt, vt) = tpe.typeArgs
             val kf = genWriter(kt.dealias, q"kv._1")
             val vf = genWriter(vt.dealias, q"kv._2")
-            q"""output.writeInt($arg.size)
-                $arg.foreach { kv => $kf; $vf }
-             """
+            q"output.writeInt($arg.size); $arg.foreach { kv => $kf; $vf }"
           } else if (tpe <:< typeOf[Iterable[_]]) {
             val t = tpe.typeArgs.head.dealias
             val f = genWriter(t, q"a")
-            q"""
-                output.writeInt($arg.size)
-                $arg.foreach(a => $f)
-             """
+            q"output.writeInt($arg.size); $arg.foreach(a => $f)"
           } else if (isValueClass(tpe)) {
             val value = tpe.decls.head // for value classes, first declaration is its single field value
             val valueTpe = valueClassArgType(tpe)
@@ -176,6 +179,63 @@ object Serializer {
             val lf = genReader(lt.dealias)
             val rf = genReader(rt.dealias)
             q"if (input.readInt == 0) scala.util.Left($lf) else scala.util.Right($rf)"
+          } else if (tpe <:< typeOf[mutable.LongMap[_]]) {
+            val t = tpe.typeArgs.head.dealias
+            val f = genReader(t)
+            val comp = companion(tpe)
+            q"""
+               val size = input.readInt
+               val map = $comp.empty[$t]
+               var i = 0
+               while (i < size) {
+                 map.update(input.readLong, $f)
+                 i += 1
+               }
+               map
+             """
+          } else if (tpe <:< typeOf[LongMap[_]]) {
+            val t = tpe.typeArgs.head.dealias
+            val f = genReader(t)
+            val comp = companion(tpe)
+            q"""
+               val size = input.readInt
+               var map = $comp.empty[$t]
+               var i = 0
+               while (i < size) {
+                 map = map.updated(input.readLong, $f)
+                 i += 1
+               }
+               map
+             """
+          } else if (tpe <:< typeOf[IntMap[_]]) {
+            val t = tpe.typeArgs.head.dealias
+            val f = genReader(t)
+            val comp = companion(tpe)
+            q"""
+               val size = input.readInt
+               var map = $comp.empty[$t]
+               var i = 0
+               while (i < size) {
+                 map = map.updated(input.readInt, $f)
+                 i += 1
+               }
+               map
+             """
+          } else if (tpe <:< typeOf[mutable.Map[_, _]]) {
+            val List(kt, vt) = tpe.typeArgs.map(_.dealias)
+            val kf = genReader(kt)
+            val vf = genReader(vt)
+            val comp = companion(tpe)
+            q"""
+               val size = input.readInt
+               val map = $comp.empty[$kt, $vt]
+               var i = 0
+               while (i < size) {
+                 map.update($kf, $vf)
+                 i += 1
+               }
+               map
+             """
           } else if (tpe <:< typeOf[Map[_, _]]) {
             val List(kt, vt) = tpe.typeArgs.map(_.dealias)
             val kf = genReader(kt)

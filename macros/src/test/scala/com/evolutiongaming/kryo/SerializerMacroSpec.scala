@@ -10,6 +10,8 @@ import com.esotericsoftware.{kryo => k}
 import org.joda.time.DateTime
 import org.scalatest.{Matchers, WordSpec}
 
+import scala.collection.immutable.{IntMap, LongMap}
+import scala.collection.mutable
 import scala.concurrent.duration._
 
 case class PlayerId(value: String) extends AnyVal
@@ -101,15 +103,23 @@ class SerializerMacroSpec extends WordSpec with Matchers {
     }
 
     s"serialize and deserialize Iterable types" in {
-      case class Iter(ss: Set[SuitEnum.SuitEnum], is: List[Int])
+      import SuitEnum._
 
-      verify(Serializer.make[Iter], Iter(Set(SuitEnum.Hearts, SuitEnum.Spades, SuitEnum.Diamonds), List(1, 2, 3)))
+      case class Iter(ss: Set[SuitEnum], is: List[Int], ls: mutable.ArrayBuffer[Long])
+
+      verify(Serializer.make[Iter], Iter(Set(Hearts, Spades, Diamonds), List(1, 2, 3), mutable.ArrayBuffer(5L, 6L)))
     }
 
-    s"serialize and deserialize Map types. Only immutable map are supported" in {
-      case class Maps(m: Map[Int, String])
+    s"serialize and deserialize Map types" in {
+      case class Maps(m1: Map[Int, String], m2: mutable.HashMap[Long, Double])
 
-      verify(Serializer.make[Maps], Maps(Map(1 -> "one")))
+      verify(Serializer.make[Maps], Maps(Map(1 -> "one"), mutable.HashMap(2L -> 2.2)))
+    }
+
+    s"serialize and deserialize IntMap & LongMap types" in {
+      case class IntAndLongMaps(m1: IntMap[String], m2: LongMap[Double], m3: mutable.LongMap[Int])
+
+      verify(Serializer.make[IntAndLongMaps], IntAndLongMaps(IntMap(1 -> "one"), LongMap(2L -> 2.2), mutable.LongMap(3L -> 3)))
     }
 
     s"serialize and deserialize respecting field annotations" in {

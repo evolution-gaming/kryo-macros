@@ -7,11 +7,15 @@ How to use
 
 Add the following resolver
 
-    resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
+```sbt
+resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
+```
     
 Add the library to your dependencies list
 
-    libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.0.0"
+```sbt
+libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.0.0"
+```
     
 Generate some serializers for your case classes
     
@@ -30,14 +34,14 @@ How to see generated code
 =========================
 
 Just add the following line to your sbt build file 
-
-    scalaOptions += "-Xmacro-settings:print-serializers"
+```scala
+scalacOptions += "-Xmacro-settings:print-serializers"
+```
     
 Limitations
 ===========
 
 - Only case classes supported
-- No mutable Map's as class fields supported
 
 Examples
 ========
@@ -50,6 +54,6 @@ Benchmarks
 
 Run benchmarks
 
-```
+```sbt
 sbt -no-colors clean 'benchmark/jmh:run -prof gc .*SerializerBenchmark.*' >results.txt
 ```
