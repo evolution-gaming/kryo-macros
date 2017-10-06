@@ -31,7 +31,7 @@ How to see generated code
 =========================
 
 Just add the following line to your sbt build file 
-```scala
+```sbt
 scalacOptions += "-Xmacro-settings:print-serializers"
 ```
     
