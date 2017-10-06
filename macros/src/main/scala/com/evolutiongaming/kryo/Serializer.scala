@@ -125,22 +125,22 @@ object Serializer {
           } else if (tpe <:< typeOf[mutable.LongMap[_]] || tpe <:< typeOf[LongMap[_]]) withWriterFor(tpe, arg) {
             val t = tpe.typeArgs.head.dealias
             val f = genWriter(t, q"kv._2")
-            q"output.writeInt(x.size); x.foreach { kv => output.writeLong(kv._1); $f }"
+            q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach { kv => output.writeLong(kv._1); $f }"
           } else if (tpe <:< typeOf[IntMap[_]]) withWriterFor(tpe, arg) {
             val t = tpe.typeArgs.head.dealias
             val f = genWriter(t, q"kv._2")
-            q"output.writeInt(x.size); x.foreach { kv => output.writeInt(kv._1); $f }"
+            q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach { kv => output.writeInt(kv._1); $f }"
           } else if (tpe <:< typeOf[mutable.Map[_, _]] || tpe <:< typeOf[Map[_, _]]) withWriterFor(tpe, arg) {
             val List(kt, vt) = tpe.typeArgs
             val kf = genWriter(kt.dealias, q"kv._1")
             val vf = genWriter(vt.dealias, q"kv._2")
-            q"output.writeInt(x.size); x.foreach { kv => $kf; $vf }"
+            q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach { kv => $kf; $vf }"
           } else if (tpe <:< typeOf[BitSet] || tpe <:< typeOf[mutable.BitSet]) withWriterFor(tpe, arg) {
             q"val bits = x.toBitMask; output.writeInt(bits.length); output.writeLongs(bits, true)"
           } else if (tpe <:< typeOf[Iterable[_]]) withWriterFor(tpe, arg) {
             val t = tpe.typeArgs.head.dealias
             val f = genWriter(t, q"a")
-            q"output.writeInt(x.size); x.foreach(a => $f)"
+            q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach(a => $f)"
           } else if (isValueClass(tpe)) {
             val value = valueClassArg(tpe)
             val t = valueClassArgType(tpe)
