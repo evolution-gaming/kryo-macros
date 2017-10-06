@@ -40,10 +40,9 @@ object Serializer {
 
       def isValueClass(tpe: Type) = tpe <:< typeOf[AnyVal] && tpe.typeSymbol.asClass.isDerivedValueClass
 
-      def valueClassArgType(tpe: Type) = {
-        // for value classes, first class declaration is its single field value
-        tpe.decls.head.asMethod.returnType
-      }
+      def valueClassArg(tpe: Type) = tpe.decls.head  // for value classes, first declaration is its single field value
+
+      def valueClassArgType(tpe: Type) = valueClassArg(tpe).asMethod.returnType
 
       var readerIds = 0L
       val readers = mutable.Map.empty[Type, (TermName, Tree)]
@@ -105,14 +104,14 @@ object Serializer {
           } else if (tpe =:= typeOf[FiniteDuration]) {
             q"output.writeLong($arg.toMillis)"
           } else if (tpe <:< typeOf[Option[_]]) withWriterFor(tpe, arg) {
-            val typeArg = tpe.typeArgs.head.dealias
+            val t = tpe.typeArgs.head.dealias
             val emptiable = annotations.contains("com.evolutiongaming.kryo.Empty")
-            if (emptiable && typeArg =:= typeOf[String])
+            if (emptiable && t =:= typeOf[String])
               q"""output.writeString(if (x.isEmpty) "" else x.get)"""
-            else if (emptiable && isValueClass(typeArg) && valueClassArgType(typeArg) =:= typeOf[String])
-              q"""output.writeString(if (x.isEmpty) "" else x.get.${typeArg.decls.head})"""
+            else if (emptiable && isValueClass(t) && valueClassArgType(t) =:= typeOf[String])
+              q"""output.writeString(if (x.isEmpty) "" else x.get.${valueClassArg(t)})"""
             else
-              q"if (x.isEmpty) output.writeInt(0) else { output.writeInt(1); ${genWriter(typeArg, q"x.get")} }"
+              q"if (x.isEmpty) output.writeInt(0) else { output.writeInt(1); ${genWriter(t, q"x.get")} }"
           } else if (tpe <:< typeOf[Either[_, _]]) withWriterFor(tpe, arg) {
             val List(lt, rt) = tpe.typeArgs
             val lf = genWriter(lt.dealias, q"l")
@@ -143,9 +142,9 @@ object Serializer {
             val f = genWriter(t, q"a")
             q"output.writeInt(x.size); x.foreach(a => $f)"
           } else if (isValueClass(tpe)) {
-            val value = tpe.decls.head // for value classes, first declaration is its single field value
-            val valueTpe = valueClassArgType(tpe)
-            genWriter(valueTpe, q"$arg.$value")
+            val value = valueClassArg(tpe)
+            val t = valueClassArgType(tpe)
+            genWriter(t, q"$arg.$value")
           } else if (tpe.widen <:< typeOf[Enumeration#Value]) {
             q"output.writeString($arg.toString)"
           } else if (implSerializer.isDefined) {
