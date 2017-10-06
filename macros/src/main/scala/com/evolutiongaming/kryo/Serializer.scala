@@ -63,7 +63,7 @@ object Serializer {
         val writerName = writers.getOrElseUpdate(tpe, {
           writerIds += 1
           val name = TermName(s"w$writerIds")
-          val writer = q"""private def $name(kryo: com.esotericsoftware.kryo.Kryo, output: com.esotericsoftware.kryo.io.Output, x: $tpe) = $f"""
+          val writer = q"""private def $name(kryo: com.esotericsoftware.kryo.Kryo, output: com.esotericsoftware.kryo.io.Output, x: $tpe): Unit = $f"""
           (name, writer)})._1
         q"$writerName(kryo, output, $arg)"
       }
