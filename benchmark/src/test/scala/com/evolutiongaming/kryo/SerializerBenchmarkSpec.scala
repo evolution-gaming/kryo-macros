@@ -10,6 +10,9 @@ class SerializerBenchmarkSpec extends WordSpec with Matchers {
       benchmark.writeThanReadAnyRefs() shouldEqual benchmark.anyRefsObj
       benchmark.writeThanReadIterables() shouldEqual benchmark.iterablesObj
       benchmark.writeThanReadMaps() shouldEqual benchmark.mapsObj
+      benchmark.writeThanReadMutableMaps() shouldEqual benchmark.mutableMapsObj
+      benchmark.writeThanReadIntAndLongMaps() shouldEqual benchmark.intAndLongMapsObj
+      benchmark.writeThanReadBitSets() shouldEqual benchmark.bitSetsObj
       benchmark.writeThanReadPrimitives() shouldEqual benchmark.primitivesObj
     }
   }
