@@ -108,7 +108,7 @@ object Serializer {
             val typeArg = tpe.typeArgs.head.dealias
             val emptiable = annotations.contains("com.evolutiongaming.kryo.Empty")
             if (emptiable && typeArg =:= typeOf[String])
-              q"""output.writeString(x.getOrElse(""))"""
+              q"""output.writeString(if (x.isEmpty) "" else x.get)"""
             else if (emptiable && isValueClass(typeArg) && valueClassArgType(typeArg) =:= typeOf[String])
               q"""output.writeString(if (x.isEmpty) "" else x.get.${typeArg.decls.head})"""
             else
