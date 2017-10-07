@@ -22,7 +22,8 @@ lazy val kryo = project.in(file("."))
         "-Xlint",
         "-Yno-adapted-args",
         "-Ywarn-dead-code",
-        "-Xfuture"
+        "-Xfuture",
+        "-Xmacro-settings:print-serializers"
       )
     ))
   ).aggregate(macros, benchmark)
