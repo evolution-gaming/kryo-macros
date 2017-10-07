@@ -44,27 +44,27 @@ object Serializer {
 
       def valueClassArgType(tpe: Type) = valueClassArg(tpe).asMethod.returnType
 
-      var readerIds = 0L
-      val readers = mutable.Map.empty[Type, (TermName, Tree)]
+      case class Reader(name: TermName, tree: Tree)
+      val readers = new mutable.LinkedHashMap[Type, Reader]
 
       def withReaderFor(tpe: Type)(f: => Tree): Tree = {
         val readerName = readers.getOrElseUpdate(tpe, {
-          readerIds += 1
-          val name = TermName(s"r$readerIds")
-          val reader = q"""private def $name(kryo: com.esotericsoftware.kryo.Kryo, input: com.esotericsoftware.kryo.io.Input): $tpe = $f"""
-          (name, reader)})._1
+          val impl = f
+          val name = TermName(s"r${readers.size}")
+          val tree = q"""private def $name(kryo: com.esotericsoftware.kryo.Kryo, input: com.esotericsoftware.kryo.io.Input): $tpe = $impl"""
+          Reader(name, tree)}).name
         q"$readerName(kryo, input)"
       }
 
-      var writerIds = 0L
-      val writers = mutable.Map.empty[Type, (TermName, Tree)]
+      case class Writer(name: TermName, tree: Tree)
+      val writers = new mutable.LinkedHashMap[Type, Writer]
 
       def withWriterFor(tpe: Type, arg: Tree)(f: => Tree): Tree = {
         val writerName = writers.getOrElseUpdate(tpe, {
-          writerIds += 1
-          val name = TermName(s"w$writerIds")
-          val writer = q"""private def $name(kryo: com.esotericsoftware.kryo.Kryo, output: com.esotericsoftware.kryo.io.Output, x: $tpe): Unit = $f"""
-          (name, writer)})._1
+          val impl = f
+          val name = TermName(s"w${writers.size}")
+          val tree = q"""private def $name(kryo: com.esotericsoftware.kryo.Kryo, output: com.esotericsoftware.kryo.io.Output, x: $tpe): Unit = $impl"""
+          Writer(name, tree)}).name
         q"$writerName(kryo, output, $arg)"
       }
 
@@ -96,7 +96,7 @@ object Serializer {
           } else if (tpe.widen =:= typeOf[String]) {
             q"output.writeString($arg)"
           } else if (tpe =:= typeOf[BigDecimal]) {
-            q"output.writeString($arg.underlying().toPlainString)"
+            q"output.writeString($arg.underlying.toPlainString)"
           } else if (tpe =:= typeOf[DateTime]) {
             q"output.writeLong($arg.getMillis)"
           } else if (tpe =:= typeOf[Instant]) {
@@ -338,10 +338,10 @@ object Serializer {
         !annotations.get(m).exists(as => as.contains("transient"))
       }
 
-      val fields = tpe.members.collect {
+      val fields = tpe.members.toSeq.reverse.collect {
         case m: MethodSymbol if m.isCaseAccessor && notTransient(m) =>
-          genCode(m, annotations.getOrElse(m, Set()))
-      }.toList.reverse
+          genCode(m, annotations.getOrElse(m, Set.empty))
+      }
 
       val (write, read) = fields.unzip
       val createObject = q"new $tpe(..$read)"
@@ -350,8 +350,8 @@ object Serializer {
             setImmutable(true)
             def write(kryo: com.esotericsoftware.kryo.Kryo, output: com.esotericsoftware.kryo.io.Output, x: $tpe): Unit = { ..$write }
             def read(kryo: com.esotericsoftware.kryo.Kryo, input: com.esotericsoftware.kryo.io.Input, `type`: java.lang.Class[$tpe]): $tpe = $createObject
-            ..${readers.values.map(_._2)}
-            ..${writers.values.map(_._2)}
+            ..${readers.values.map(_.tree)}
+            ..${writers.values.map(_.tree)}
         }"""
 
       if (c.settings.contains("print-serializers")) {
@@ -365,7 +365,7 @@ object Serializer {
       import c.universe._
 
       case class InnerSerializer(name: TermName, tree: Tree)
-      val serializers = new mutable.HashMap[Tree, InnerSerializer]()
+      val serializers = new mutable.LinkedHashMap[Tree, InnerSerializer]
 
       val tpe = weakTypeOf[A]
       val q"{ case ..$cases }" = pf
