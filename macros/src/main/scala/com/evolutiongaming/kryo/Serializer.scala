@@ -40,9 +40,32 @@ object Serializer {
 
       def isValueClass(tpe: Type) = tpe <:< typeOf[AnyVal] && tpe.typeSymbol.asClass.isDerivedValueClass
 
-      def valueClassArgType(tpe: Type) = {
-        // for value classes, first class declaration is its single field value
-        tpe.decls.head.asMethod.returnType
+      def valueClassArg(tpe: Type) = tpe.decls.head  // for value classes, first declaration is its single field value
+
+      def valueClassArgType(tpe: Type) = valueClassArg(tpe).asMethod.returnType
+
+      case class Reader(name: TermName, tree: Tree)
+      val readers = new mutable.LinkedHashMap[Type, Reader]
+
+      def withReaderFor(tpe: Type)(f: => Tree): Tree = {
+        val readerName = readers.getOrElseUpdate(tpe, {
+          val impl = f
+          val name = TermName(s"r${readers.size}")
+          val tree = q"""private def $name(kryo: com.esotericsoftware.kryo.Kryo, input: com.esotericsoftware.kryo.io.Input): $tpe = $impl"""
+          Reader(name, tree)}).name
+        q"$readerName(kryo, input)"
+      }
+
+      case class Writer(name: TermName, tree: Tree)
+      val writers = new mutable.LinkedHashMap[Type, Writer]
+
+      def withWriterFor(tpe: Type, arg: Tree)(f: => Tree): Tree = {
+        val writerName = writers.getOrElseUpdate(tpe, {
+          val impl = f
+          val name = TermName(s"w${writers.size}")
+          val tree = q"""private def $name(kryo: com.esotericsoftware.kryo.Kryo, output: com.esotericsoftware.kryo.io.Output, x: $tpe): Unit = $impl"""
+          Writer(name, tree)}).name
+        q"$writerName(kryo, output, $arg)"
       }
 
       def genCode(m: MethodSymbol, annotations: Set[String]) = {
@@ -73,58 +96,55 @@ object Serializer {
           } else if (tpe.widen =:= typeOf[String]) {
             q"output.writeString($arg)"
           } else if (tpe =:= typeOf[BigDecimal]) {
-            q"output.writeString($arg.underlying().toPlainString)"
+            q"output.writeString($arg.underlying.toPlainString)"
           } else if (tpe =:= typeOf[DateTime]) {
             q"output.writeLong($arg.getMillis)"
           } else if (tpe =:= typeOf[Instant]) {
             q"output.writeLong($arg.toEpochMilli)"
           } else if (tpe =:= typeOf[FiniteDuration]) {
             q"output.writeLong($arg.toMillis)"
-          } else if (tpe <:< typeOf[Option[_]]) {
-            val typeArg = tpe.typeArgs.head.dealias
+          } else if (tpe <:< typeOf[Option[_]]) withWriterFor(tpe, arg) {
+            val t = tpe.typeArgs.head.dealias
             val emptiable = annotations.contains("com.evolutiongaming.kryo.Empty")
-            if (emptiable && typeArg =:= typeOf[String])
-              q"""output.writeString($arg.getOrElse(""))"""
-            else if (emptiable && isValueClass(typeArg) && valueClassArgType(typeArg) =:= typeOf[String]) {
-              val value = typeArg.decls.head // for value classes, first declaration is its single field value
-              q"""output.writeString(if ($arg.isEmpty) "" else $arg.get.$value)"""
-            } else {
-              val f = genWriter(typeArg, q"a")
-              q"output.writeInt($arg.size); $arg.foreach(a => $f)"
-            }
-          } else if (tpe <:< typeOf[Either[_, _]]) {
+            if (emptiable && t =:= typeOf[String])
+              q"""output.writeString(if (x.isEmpty) "" else x.get)"""
+            else if (emptiable && isValueClass(t) && valueClassArgType(t) =:= typeOf[String])
+              q"""output.writeString(if (x.isEmpty) "" else x.get.${valueClassArg(t)})"""
+            else
+              q"if (x.isEmpty) output.writeInt(0) else { output.writeInt(1); ${genWriter(t, q"x.get")} }"
+          } else if (tpe <:< typeOf[Either[_, _]]) withWriterFor(tpe, arg) {
             val List(lt, rt) = tpe.typeArgs
             val lf = genWriter(lt.dealias, q"l")
             val rf = genWriter(rt.dealias, q"r")
             q"""
-               $arg match {
+               x match {
                  case Left(l) => output.writeInt(0); $lf
                  case Right(r) => output.writeInt(1); $rf
                }
              """
-          } else if (tpe <:< typeOf[mutable.LongMap[_]] || tpe <:< typeOf[LongMap[_]]) {
+          } else if (tpe <:< typeOf[mutable.LongMap[_]] || tpe <:< typeOf[LongMap[_]]) withWriterFor(tpe, arg) {
             val t = tpe.typeArgs.head.dealias
             val f = genWriter(t, q"kv._2")
-            q"output.writeInt($arg.size); $arg.foreach { kv => output.writeLong(kv._1); $f }"
-          } else if (tpe <:< typeOf[IntMap[_]]) {
+            q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach { kv => output.writeLong(kv._1); $f }"
+          } else if (tpe <:< typeOf[IntMap[_]]) withWriterFor(tpe, arg) {
             val t = tpe.typeArgs.head.dealias
             val f = genWriter(t, q"kv._2")
-            q"output.writeInt($arg.size); $arg.foreach { kv => output.writeInt(kv._1); $f }"
-          } else if (tpe <:< typeOf[mutable.Map[_, _]] || tpe <:< typeOf[Map[_, _]]) {
+            q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach { kv => output.writeInt(kv._1); $f }"
+          } else if (tpe <:< typeOf[mutable.Map[_, _]] || tpe <:< typeOf[Map[_, _]]) withWriterFor(tpe, arg) {
             val List(kt, vt) = tpe.typeArgs
             val kf = genWriter(kt.dealias, q"kv._1")
             val vf = genWriter(vt.dealias, q"kv._2")
-            q"output.writeInt($arg.size); $arg.foreach { kv => $kf; $vf }"
-          } else if (tpe <:< typeOf[BitSet] || tpe <:< typeOf[mutable.BitSet]) {
-            q"val bits = $arg.toBitMask; output.writeInt(bits.length); output.writeLongs(bits, true)"
-          } else if (tpe <:< typeOf[Iterable[_]]) {
+            q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach { kv => $kf; $vf }"
+          } else if (tpe <:< typeOf[BitSet] || tpe <:< typeOf[mutable.BitSet]) withWriterFor(tpe, arg) {
+            q"val bits = x.toBitMask; output.writeInt(bits.length); output.writeLongs(bits, true)"
+          } else if (tpe <:< typeOf[Iterable[_]]) withWriterFor(tpe, arg) {
             val t = tpe.typeArgs.head.dealias
             val f = genWriter(t, q"a")
-            q"output.writeInt($arg.size); $arg.foreach(a => $f)"
+            q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach(a => $f)"
           } else if (isValueClass(tpe)) {
-            val value = tpe.decls.head // for value classes, first declaration is its single field value
-            val valueTpe = valueClassArgType(tpe)
-            genWriter(valueTpe, q"$arg.$value")
+            val value = valueClassArg(tpe)
+            val t = valueClassArgType(tpe)
+            genWriter(t, q"$arg.$value")
           } else if (tpe.widen <:< typeOf[Enumeration#Value]) {
             q"output.writeString($arg.toString)"
           } else if (implSerializer.isDefined) {
@@ -165,23 +185,35 @@ object Serializer {
             q"java.time.Instant.ofEpochMilli(input.readLong)"
           } else if (tpe =:= typeOf[FiniteDuration]) {
             q"new scala.concurrent.duration.FiniteDuration(input.readLong, java.util.concurrent.TimeUnit.MILLISECONDS).toCoarsest.asInstanceOf[scala.concurrent.duration.FiniteDuration]"
-          } else if (tpe <:< typeOf[Option[_]]) {
+          } else if (tpe <:< typeOf[Option[_]]) withReaderFor(tpe) {
             val typeArg = tpe.typeArgs.head.dealias
             val emptiable = annotations.contains("com.evolutiongaming.kryo.Empty")
             if (emptiable && typeArg =:= typeOf[String])
-              q"""Option(input.readString) map (_.trim) filter (_.nonEmpty)"""
+              q"""
+                 val rs = input.readString
+                 if (rs eq null) None
+                 else {
+                   val s = rs.trim
+                   if (s.isEmpty) None else Some(s)
+                 }
+               """
             else if (emptiable && isValueClass(typeArg) && valueClassArgType(typeArg) =:= typeOf[String])
-              q"""Option(input.readString).map(_.trim).collect { case s if s.nonEmpty => new $typeArg(s) }"""
-            else {
-              val f = genReader(typeArg)
-              q"if (input.readInt == 0) (None: Option[$typeArg]) else Some($f)"
-            }
-          } else if (tpe <:< typeOf[Either[_, _]]) {
+              q"""
+                 val rs = input.readString
+                 if (rs eq null) None
+                 else {
+                   val s = rs.trim
+                   if (s.isEmpty) None else Some(new $typeArg(s))
+                 }
+               """
+            else
+              q"if (input.readInt == 0) None else Some(${genReader(typeArg)})"
+          } else if (tpe <:< typeOf[Either[_, _]]) withReaderFor(tpe) {
             val List(lt, rt) = tpe.typeArgs
             val lf = genReader(lt.dealias)
             val rf = genReader(rt.dealias)
             q"if (input.readInt == 0) scala.util.Left($lf) else scala.util.Right($rf)"
-          } else if (tpe <:< typeOf[mutable.LongMap[_]]) {
+          } else if (tpe <:< typeOf[mutable.LongMap[_]]) withReaderFor(tpe) {
             val t = tpe.typeArgs.head.dealias
             val f = genReader(t)
             val comp = companion(tpe)
@@ -195,7 +227,7 @@ object Serializer {
                }
                map
              """
-          } else if (tpe <:< typeOf[LongMap[_]]) {
+          } else if (tpe <:< typeOf[LongMap[_]]) withReaderFor(tpe) {
             val t = tpe.typeArgs.head.dealias
             val f = genReader(t)
             val comp = companion(tpe)
@@ -209,7 +241,7 @@ object Serializer {
                }
                map
              """
-          } else if (tpe <:< typeOf[IntMap[_]]) {
+          } else if (tpe <:< typeOf[IntMap[_]]) withReaderFor(tpe) {
             val t = tpe.typeArgs.head.dealias
             val f = genReader(t)
             val comp = companion(tpe)
@@ -223,7 +255,7 @@ object Serializer {
                }
                map
              """
-          } else if (tpe <:< typeOf[mutable.Map[_, _]]) {
+          } else if (tpe <:< typeOf[mutable.Map[_, _]]) withReaderFor(tpe) {
             val List(kt, vt) = tpe.typeArgs.map(_.dealias)
             val kf = genReader(kt)
             val vf = genReader(vt)
@@ -238,7 +270,7 @@ object Serializer {
                }
                map
              """
-          } else if (tpe <:< typeOf[Map[_, _]]) {
+          } else if (tpe <:< typeOf[Map[_, _]]) withReaderFor(tpe) {
             val List(kt, vt) = tpe.typeArgs.map(_.dealias)
             val kf = genReader(kt)
             val vf = genReader(vt)
@@ -253,14 +285,14 @@ object Serializer {
                }
                map
              """
-          } else if (tpe <:< typeOf[BitSet] || tpe <:< typeOf[mutable.BitSet]) {
+          } else if (tpe <:< typeOf[BitSet] || tpe <:< typeOf[mutable.BitSet]) withReaderFor(tpe) {
             val comp = companion(tpe)
             q"""
                val len = input.readInt
                if (len > 0) $comp.fromBitMaskNoCopy(input.readLongs(len, true))
                else $comp.empty
              """
-          } else if (tpe <:< typeOf[Iterable[_]]) {
+          } else if (tpe <:< typeOf[Iterable[_]]) withReaderFor(tpe) {
             val t = tpe.typeArgs.head.dealias
             val f = genReader(t)
             val comp = companion(tpe)
@@ -306,10 +338,10 @@ object Serializer {
         !annotations.get(m).exists(as => as.contains("transient"))
       }
 
-      val fields = tpe.members.collect {
+      val fields = tpe.members.toSeq.reverse.collect {
         case m: MethodSymbol if m.isCaseAccessor && notTransient(m) =>
-          genCode(m, annotations.getOrElse(m, Set()))
-      }.toList.reverse
+          genCode(m, annotations.getOrElse(m, Set.empty))
+      }
 
       val (write, read) = fields.unzip
       val createObject = q"new $tpe(..$read)"
@@ -318,6 +350,8 @@ object Serializer {
             setImmutable(true)
             def write(kryo: com.esotericsoftware.kryo.Kryo, output: com.esotericsoftware.kryo.io.Output, x: $tpe): Unit = { ..$write }
             def read(kryo: com.esotericsoftware.kryo.Kryo, input: com.esotericsoftware.kryo.io.Input, `type`: java.lang.Class[$tpe]): $tpe = $createObject
+            ..${readers.values.map(_.tree)}
+            ..${writers.values.map(_.tree)}
         }"""
 
       if (c.settings.contains("print-serializers")) {
@@ -331,7 +365,7 @@ object Serializer {
       import c.universe._
 
       case class InnerSerializer(name: TermName, tree: Tree)
-      val serializers = new mutable.HashMap[Tree, InnerSerializer]()
+      val serializers = new mutable.LinkedHashMap[Tree, InnerSerializer]
 
       val tpe = weakTypeOf[A]
       val q"{ case ..$cases }" = pf
