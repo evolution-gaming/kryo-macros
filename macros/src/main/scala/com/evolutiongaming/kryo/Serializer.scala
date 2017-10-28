@@ -38,7 +38,15 @@ object Serializer {
 
       def companion(tpe: Type) = Ident(tpe.typeSymbol.companion)
 
-      def isValueClass(tpe: Type) = tpe <:< typeOf[AnyVal] && tpe.typeSymbol.asClass.isDerivedValueClass
+      def hasSingleArgPublicConstructor(tpe: Type) = tpe.decls.exists {
+        case m: MethodSymbol =>
+          m.isConstructor && m.paramLists.size == 1 && m.paramLists.head.size == 1 && m.isPublic
+        case _ => false
+      }
+
+      def isSupportedValueClass(tpe: Type) =
+        tpe <:< typeOf[AnyVal] && tpe.typeSymbol.asClass.isDerivedValueClass &&
+          hasSingleArgPublicConstructor(tpe)
 
       def valueClassArg(tpe: Type) = tpe.decls.head  // for value classes, first declaration is its single field value
 
@@ -108,7 +116,7 @@ object Serializer {
             val emptiable = annotations.contains("com.evolutiongaming.kryo.Empty")
             if (emptiable && t =:= typeOf[String])
               q"""output.writeString(if (x.isEmpty) "" else x.get)"""
-            else if (emptiable && isValueClass(t) && valueClassArgType(t) =:= typeOf[String])
+            else if (emptiable && isSupportedValueClass(t) && valueClassArgType(t) =:= typeOf[String])
               q"""output.writeString(if (x.isEmpty) "" else x.get.${valueClassArg(t)})"""
             else
               q"if (x.isEmpty) output.writeInt(0) else { output.writeInt(1); ${genWriter(t, q"x.get")} }"
@@ -141,7 +149,7 @@ object Serializer {
             val t = tpe.typeArgs.head.dealias
             val f = genWriter(t, q"a")
             q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach(a => $f)"
-          } else if (isValueClass(tpe)) {
+          } else if (isSupportedValueClass(tpe)) {
             val value = valueClassArg(tpe)
             val t = valueClassArgType(tpe)
             genWriter(t, q"$arg.$value")
@@ -197,7 +205,9 @@ object Serializer {
                    if (s.isEmpty) None else Some(s)
                  }
                """
-            else if (emptiable && isValueClass(typeArg) && valueClassArgType(typeArg) =:= typeOf[String])
+            else if (
+              emptiable && isSupportedValueClass(typeArg) && valueClassArgType(typeArg) =:= typeOf[String]
+            )
               q"""
                  val rs = input.readString
                  if (rs eq null) None
@@ -308,7 +318,7 @@ object Serializer {
                  builder.result
                } else $comp.empty[$t]
              """
-          } else if (isValueClass(tpe)) {
+          } else if (isSupportedValueClass(tpe)) {
             val reader = genReader(valueClassArgType(tpe))
             q"new $tpe($reader)"
           } else if (tpe.widen <:< typeOf[Enumeration#Value]) {
