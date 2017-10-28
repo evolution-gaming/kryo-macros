@@ -16,6 +16,10 @@ import scala.concurrent.duration._
 
 case class PlayerId(value: String) extends AnyVal
 case class IntId(value: Int) extends AnyVal
+class ValWithPrivateConstructor private(val value: String) extends AnyVal
+object ValWithPrivateConstructor {
+  def apply(value: String): ValWithPrivateConstructor = new ValWithPrivateConstructor(value)
+}
 
 /**
   * These are test and examples of using [[Serializer]] macros for
@@ -355,6 +359,21 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verify(commandSerializer, Start(Game(Roulette)))
       verify(commandSerializer, Action(ActionType.StartBetting))
       verify(commandSerializer, Action(ActionType.StopBetting))
+    }
+
+    "serialize and deserialize values classes with private constructors using implicit serializers" in {
+      case class Outer(a: ValWithPrivateConstructor)
+
+      implicit object ManualSerializer extends k.Serializer[ValWithPrivateConstructor] {
+        override def write(
+          kryo: Kryo, output: Output, `object`: ValWithPrivateConstructor
+        ): Unit = output.writeString(`object`.value)
+        override def read(
+          kryo: Kryo, input: Input, `type`: Class[ValWithPrivateConstructor]
+        ): ValWithPrivateConstructor = ValWithPrivateConstructor(input.readString())
+      }
+
+      verify(Serializer.make[Outer], Outer(ValWithPrivateConstructor("a")))
     }
   }
 
