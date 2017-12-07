@@ -33,7 +33,7 @@ lazy val macros = project
     name := "kryo-macros",
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "com.esotericsoftware" % "kryo" % "4.0.0",
+      "com.esotericsoftware" % "kryo" % "4.0.1",
       "joda-time" % "joda-time" % "2.8",
       "org.joda" % "joda-convert" % "1.7",
       "org.scalatest" %% "scalatest" % "3.0.3" % Test
