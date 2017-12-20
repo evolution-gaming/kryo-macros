@@ -20,10 +20,10 @@ resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 
 Add the library to your dependencies list
 ```sbt
-libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.1.5"
+libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.1.6"
 ```
 
-Generate some serializers for your case classes
+### Generate some serializers for your case classes
 ```scala
 import com.evolutiongaming.kryo.Serializer
 
@@ -31,6 +31,41 @@ case class Player(name: String)
 
 val serializer = Serializer.make[Player]
  ```
+ 
+ ### Serialize objects and sealed traits/class
+
+```scala
+import com.evolutiongaming.kryo.{ConstSerializer, Serializer}
+ 
+sealed trait Reason
+ 
+object Reason {
+    case object Close extends Reason
+    case object Pause extends Reason       
+}
+
+val reasonSerializer = Serializer.makeCommon[Reason] {
+    case 0 => ConstSerializer(Reason.Close)
+    case 1 => ConstSerializer(Reason.Pause)
+}
+```
+
+```scala
+import com.evolutiongaming.kryo.Serializer
+
+sealed abstract class Message(val text: String)
+
+object Message {
+
+  case object Common extends Message("common")
+  case object Notification extends Message("notification")
+}
+
+private implicit val messageSerializer = Serializer.makeMapping[Message] {
+    case 0 => Message.Common   
+    case 1 => Message.Notification
+  }
+```
 
 That's it! You have generated a `com.esotericsoftware.kryo.Serializer` implementation for your Player.
 You must know what to do with it if you are here :)
