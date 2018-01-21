@@ -32,8 +32,8 @@ object Serializer {
 
   private object Macros {
     def serializerImpl[A: c.WeakTypeTag](c: blackbox.Context): c.Expr[kryo.Serializer[A]] = {
-      import c.universe
       import c.universe._
+
       val tpe = weakTypeOf[A]
 
       def companion(tpe: Type) = Ident(tpe.typeSymbol.companion)
@@ -45,8 +45,7 @@ object Serializer {
       }
 
       def isSupportedValueClass(tpe: Type) =
-        tpe <:< typeOf[AnyVal] && tpe.typeSymbol.asClass.isDerivedValueClass &&
-          hasSingleArgPublicConstructor(tpe)
+        tpe <:< typeOf[AnyVal] && tpe.typeSymbol.asClass.isDerivedValueClass && hasSingleArgPublicConstructor(tpe)
 
       def valueClassArg(tpe: Type) = tpe.decls.head  // for value classes, first declaration is its single field value
 
@@ -85,21 +84,21 @@ object Serializer {
 
         def genWriter(tpe: Type, arg: Tree): Tree = {
           lazy val implSerializer = findImplicitSerializer(tpe)
-          if (tpe.widen =:= universe.definitions.BooleanTpe) {
+          if (tpe.widen =:= definitions.BooleanTpe) {
             q"output.writeBoolean($arg)"
-          } else if (tpe.widen =:= universe.definitions.ByteTpe) {
+          } else if (tpe.widen =:= definitions.ByteTpe) {
             q"output.writeInt($arg.toInt)"
-          } else if (tpe.widen =:= universe.definitions.CharTpe) {
+          } else if (tpe.widen =:= definitions.CharTpe) {
             q"output.writeInt($arg.toInt)"
-          } else if (tpe.widen =:= universe.definitions.ShortTpe) {
+          } else if (tpe.widen =:= definitions.ShortTpe) {
             q"output.writeInt($arg.toInt)"
-          } else if (tpe.widen weak_<:< universe.definitions.IntTpe) {
+          } else if (tpe.widen weak_<:< definitions.IntTpe) {
             q"output.writeInt($arg)"
-          } else if (tpe.widen =:= universe.definitions.LongTpe) {
+          } else if (tpe.widen =:= definitions.LongTpe) {
             q"output.writeLong($arg)"
-          } else if (tpe.widen =:= universe.definitions.DoubleTpe) {
+          } else if (tpe.widen =:= definitions.DoubleTpe) {
             q"output.writeDouble($arg)"
-          } else if (tpe.widen =:= universe.definitions.FloatTpe) {
+          } else if (tpe.widen =:= definitions.FloatTpe) {
             q"output.writeFloat($arg)"
           } else if (tpe.widen =:= typeOf[String]) {
             q"output.writeString($arg)"
@@ -164,24 +163,23 @@ object Serializer {
 
         def genReader(tpe: Type): Tree = {
           lazy val implSerializer = findImplicitSerializer(tpe)
-          if (tpe.widen =:= universe.definitions.BooleanTpe) {
+          if (tpe.widen =:= definitions.BooleanTpe) {
             q"input.readBoolean"
-          } else if (tpe.widen =:= universe.definitions.ByteTpe) {
+          } else if (tpe.widen =:= definitions.ByteTpe) {
             q"input.readInt.toByte"
-          } else if (tpe.widen =:= universe.definitions.CharTpe) {
+          } else if (tpe.widen =:= definitions.CharTpe) {
             q"input.readInt.toChar"
-          } else if (tpe.widen =:= universe.definitions.ShortTpe) {
+          } else if (tpe.widen =:= definitions.ShortTpe) {
             q"input.readInt.toShort"
-          } else if (tpe.widen =:= universe.definitions.IntTpe) {
+          } else if (tpe.widen =:= definitions.IntTpe) {
             q"input.readInt"
-          } else if (tpe.widen weak_<:< universe.definitions.IntTpe) {
-            // handle Byte, Short, Char, Int
+          } else if (tpe.widen weak_<:< definitions.IntTpe) { // handle Byte, Short, Char, Int
             q"input.readInt.asInstanceOf[${tpe.widen}]"
-          } else if (tpe.widen =:= universe.definitions.LongTpe) {
+          } else if (tpe.widen =:= definitions.LongTpe) {
             q"input.readLong"
-          } else if (tpe.widen =:= universe.definitions.DoubleTpe) {
+          } else if (tpe.widen =:= definitions.DoubleTpe) {
             q"input.readDouble"
-          } else if (tpe.widen =:= universe.definitions.FloatTpe) {
+          } else if (tpe.widen =:= definitions.FloatTpe) {
             q"input.readFloat"
           } else if (tpe.widen =:= typeOf[String]) {
             q"input.readString"
@@ -205,9 +203,7 @@ object Serializer {
                    if (s.isEmpty) None else Some(s)
                  }
                """
-            else if (
-              emptiable && isSupportedValueClass(typeArg) && valueClassArgType(typeArg) =:= typeOf[String]
-            )
+            else if (emptiable && isSupportedValueClass(typeArg) && valueClassArgType(typeArg) =:= typeOf[String])
               q"""
                  val rs = input.readString
                  if (rs eq null) None
@@ -344,9 +340,7 @@ object Serializer {
         case m: TermSymbol if m.annotations.nonEmpty => m.getter -> m.annotations.map(_.toString).toSet
       }.toMap
 
-      def notTransient(m: MethodSymbol) = {
-        !annotations.get(m).exists(as => as.contains("transient"))
-      }
+      def notTransient(m: MethodSymbol) = !annotations.get(m).exists(_.contains("transient"))
 
       val fields = tpe.members.toSeq.reverse.collect {
         case m: MethodSymbol if m.isCaseAccessor && notTransient(m) =>
@@ -359,7 +353,7 @@ object Serializer {
         q"""new com.esotericsoftware.kryo.Serializer[$tpe] {
             setImmutable(true)
             def write(kryo: com.esotericsoftware.kryo.Kryo, output: com.esotericsoftware.kryo.io.Output, x: $tpe): Unit = { ..$write }
-            def read(kryo: com.esotericsoftware.kryo.Kryo, input: com.esotericsoftware.kryo.io.Input, `type`: java.lang.Class[$tpe]): $tpe = $createObject
+            def read(kryo: com.esotericsoftware.kryo.Kryo, input: com.esotericsoftware.kryo.io.Input, `type`: Class[$tpe]): $tpe = $createObject
             ..${readers.values.map(_.tree)}
             ..${writers.values.map(_.tree)}
         }"""
@@ -426,7 +420,7 @@ object Serializer {
         q"""new com.esotericsoftware.kryo.Serializer[$tpe] {
             ..$innerSerializers
             def write(kryo: com.esotericsoftware.kryo.Kryo, output: com.esotericsoftware.kryo.io.Output, x: $tpe): Unit = { ..$write }
-            def read(kryo: com.esotericsoftware.kryo.Kryo, input: com.esotericsoftware.kryo.io.Input, `type`: java.lang.Class[$tpe]): $tpe = $read
+            def read(kryo: com.esotericsoftware.kryo.Kryo, input: com.esotericsoftware.kryo.io.Input, `type`: Class[$tpe]): $tpe = $read
         }"""
       if (c.settings.contains("print-serializers")) {
         val code = showCode(tree)
