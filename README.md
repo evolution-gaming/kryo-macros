@@ -23,52 +23,46 @@ Add the library to your dependencies list
 libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.1.6"
 ```
 
-### Generate some serializers for your case classes
+Generate some serializers for your case classes
 ```scala
 import com.evolutiongaming.kryo.Serializer
 
 case class Player(name: String)
 
 val serializer = Serializer.make[Player]
- ```
+```
  
- ### Serialize objects and sealed traits/class
+That's it! You have generated a `com.esotericsoftware.kryo.Serializer` implementation for your `Player`.
+You must know what to do with it if you are here :)
 
+To serialize objects that extends sealed traits/class use `Serializer.makeCommon` call: 
 ```scala
 import com.evolutiongaming.kryo.{ConstSerializer, Serializer}
  
 sealed trait Reason
  
 object Reason {
-    case object Close extends Reason
-    case object Pause extends Reason       
+  case object Close extends Reason
+  case object Pause extends Reason       
 }
 
 val reasonSerializer = Serializer.makeCommon[Reason] {
-    case 0 => ConstSerializer(Reason.Close)
-    case 1 => ConstSerializer(Reason.Pause)
+  case 0 => ConstSerializer(Reason.Close)
+  case 1 => ConstSerializer(Reason.Pause)
 }
-```
-
-```scala
-import com.evolutiongaming.kryo.Serializer
 
 sealed abstract class Message(val text: String)
 
 object Message {
-
   case object Common extends Message("common")
   case object Notification extends Message("notification")
 }
 
 private implicit val messageSerializer = Serializer.makeMapping[Message] {
-    case 0 => Message.Common   
-    case 1 => Message.Notification
-  }
+  case 0 => Message.Common   
+  case 1 => Message.Notification
+}
 ```
-
-That's it! You have generated a `com.esotericsoftware.kryo.Serializer` implementation for your Player.
-You must know what to do with it if you are here :)
 
 To see generated code just add the following line to your sbt build file 
 ```sbt
