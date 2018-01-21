@@ -74,12 +74,23 @@ For more examples, please, check out
 
 ## How to develop
 
-Run tests and check coverage for both Scala versions
+### Run tests, check coverage & binary compatibility for both Scala versions
 ```sh
-sbt clean +coverage +test +coverageReport
+sbt clean +coverage +test +coverageReport +mimaReportBinaryIssues
 ```
 
-Run benchmarks
+### Run benchmarks
 ```sh
 sbt -no-colors clean 'benchmark/jmh:run -prof gc .*SerializerBenchmark.*' >results.txt
+```
+
+### Release
+
+For version numbering use [Recommended Versioning Scheme](http://docs.scala-lang.org/overviews/core/binary-compatibility-for-library-authors.html#recommended-versioning-scheme)
+that is widely adopted in the Scala ecosystem.
+
+Double-check binary & source compatibility and release using following command (credentials required):
+
+```sh
+sbt release
 ```
