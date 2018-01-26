@@ -1,17 +1,44 @@
 import sbt.Keys.scalacOptions
+import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
+import scala.sys.process._
+
+lazy val oldVersion = "git describe --abbrev=0".!!.trim.replaceAll("^v", "")
+
+def mimaSettings = mimaDefaultSettings ++ Seq(
+  mimaCheckDirection := {
+    def isPatch = {
+      val Array(newMajor, newMinor, _) = version.value.split('.')
+      val Array(oldMajor, oldMinor, _) = oldVersion.split('.')
+      newMajor == oldMajor && newMinor == oldMinor
+    }
+
+    if (isPatch) "both" else "backward"
+  },
+  mimaPreviousArtifacts := {
+    def isCheckingRequired = {
+      val Array(newMajor, newMinor, _) = version.value.split('.')
+      val Array(oldMajor, oldMinor, _) = oldVersion.split('.')
+      newMajor == oldMajor && (newMajor != "0" || newMinor == oldMinor)
+    }
+
+    if (isCheckingRequired) Set(organization.value %% moduleName.value % oldVersion)
+    else Set()
+  }
+)
 
 lazy val kryo = project.in(file("."))
   .settings(
-    crossScalaVersions := Seq("2.12.3", "2.11.11"),
+    crossScalaVersions := Seq("2.12.4", "2.11.12"),
     releaseCrossBuild := true,
     publish := (),
     inThisBuild(Seq(
       organization := "com.evolutiongaming",
-      scalaVersion := "2.12.3",
+      scalaVersion := "2.12.4",
       startYear := Some(2016),
       organizationName := "Evolution Gaming",
       organizationHomepage := Some(url("https://www.evolutiongaming.com/")),
       bintrayOrganization := Some("evolutiongaming"),
+      resolvers += Resolver.bintrayRepo("evolutiongaming", "maven"),
       homepage := Some(url("https://github.com/evolution-gaming/kryo-macros")),
       licenses := Seq(("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
       scalacOptions ++= Seq(
@@ -29,6 +56,7 @@ lazy val kryo = project.in(file("."))
   ).aggregate(macros, benchmark)
 
 lazy val macros = project
+  .settings(mimaSettings: _*)
   .settings(
     name := "kryo-macros",
     libraryDependencies ++= Seq(
@@ -46,7 +74,7 @@ lazy val benchmark = project
     name := "kryo-benchmark",
     publish := (),
     libraryDependencies ++= Seq(
-      "pl.project13.scala" % "sbt-jmh-extras" % "0.2.27",
+      "pl.project13.scala" % "sbt-jmh-extras" % "0.3.2",
       "org.scalatest" %% "scalatest" % "3.0.3" % Test
     )
   ).dependsOn(macros)

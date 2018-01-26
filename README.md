@@ -23,52 +23,46 @@ Add the library to your dependencies list
 libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.1.6"
 ```
 
-### Generate some serializers for your case classes
+Generate some serializers for your case classes
 ```scala
 import com.evolutiongaming.kryo.Serializer
 
 case class Player(name: String)
 
 val serializer = Serializer.make[Player]
- ```
+```
  
- ### Serialize objects and sealed traits/class
+That's it! You have generated a `com.esotericsoftware.kryo.Serializer` implementation for your `Player`.
+You must know what to do with it if you are here :)
 
+To serialize objects that extends sealed traits/class use `Serializer.makeCommon` call: 
 ```scala
 import com.evolutiongaming.kryo.{ConstSerializer, Serializer}
  
 sealed trait Reason
  
 object Reason {
-    case object Close extends Reason
-    case object Pause extends Reason       
+  case object Close extends Reason
+  case object Pause extends Reason       
 }
 
 val reasonSerializer = Serializer.makeCommon[Reason] {
-    case 0 => ConstSerializer(Reason.Close)
-    case 1 => ConstSerializer(Reason.Pause)
+  case 0 => ConstSerializer(Reason.Close)
+  case 1 => ConstSerializer(Reason.Pause)
 }
-```
-
-```scala
-import com.evolutiongaming.kryo.Serializer
 
 sealed abstract class Message(val text: String)
 
 object Message {
-
   case object Common extends Message("common")
   case object Notification extends Message("notification")
 }
 
 private implicit val messageSerializer = Serializer.makeMapping[Message] {
-    case 0 => Message.Common   
-    case 1 => Message.Notification
-  }
+  case 0 => Message.Common   
+  case 1 => Message.Notification
+}
 ```
-
-That's it! You have generated a `com.esotericsoftware.kryo.Serializer` implementation for your Player.
-You must know what to do with it if you are here :)
 
 To see generated code just add the following line to your sbt build file 
 ```sbt
@@ -80,12 +74,23 @@ For more examples, please, check out
 
 ## How to develop
 
-Run tests and check coverage for both Scala versions
+### Run tests, check coverage & binary compatibility for both Scala versions
 ```sh
-sbt clean +coverage +test +coverageReport
+sbt clean +coverage +test +coverageReport +mimaReportBinaryIssues
 ```
 
-Run benchmarks
+### Run benchmarks
 ```sh
 sbt -no-colors clean 'benchmark/jmh:run -prof gc .*SerializerBenchmark.*' >results.txt
+```
+
+### Release
+
+For version numbering use [Recommended Versioning Scheme](http://docs.scala-lang.org/overviews/core/binary-compatibility-for-library-authors.html#recommended-versioning-scheme)
+that is widely adopted in the Scala ecosystem.
+
+Double-check binary & source compatibility and release using following command (credentials required):
+
+```sh
+sbt release
 ```
