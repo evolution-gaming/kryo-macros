@@ -26,36 +26,39 @@ def mimaSettings = mimaDefaultSettings ++ Seq(
   }
 )
 
+lazy val commonSettings = Seq(
+  organization := "com.evolutiongaming",
+  scalaVersion := "2.12.4",
+  crossScalaVersions := Seq("2.12.4", "2.11.12"),
+  releaseCrossBuild := true,
+  startYear := Some(2016),
+  organizationName := "Evolution Gaming",
+  organizationHomepage := Some(url("https://www.evolutiongaming.com/")),
+  bintrayOrganization := Some("evolutiongaming"),
+  resolvers += Resolver.bintrayRepo("evolutiongaming", "maven"),
+  homepage := Some(url("https://github.com/evolution-gaming/kryo-macros")),
+  licenses := Seq(("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
+  scalacOptions ++= Seq(
+    "-encoding", "UTF-8",
+    "-feature",
+    "-unchecked",
+    "-deprecation",
+    "-Xlint",
+    "-Yno-adapted-args",
+    "-Ywarn-dead-code",
+    "-Xfuture",
+    "-Xmacro-settings:print-serializers"
+  )
+)
+
 lazy val kryo = project.in(file("."))
+  .settings(commonSettings: _*)
   .settings(
-    crossScalaVersions := Seq("2.12.4", "2.11.12"),
-    releaseCrossBuild := true,
     publish := (),
-    inThisBuild(Seq(
-      organization := "com.evolutiongaming",
-      scalaVersion := "2.12.4",
-      startYear := Some(2016),
-      organizationName := "Evolution Gaming",
-      organizationHomepage := Some(url("https://www.evolutiongaming.com/")),
-      bintrayOrganization := Some("evolutiongaming"),
-      resolvers += Resolver.bintrayRepo("evolutiongaming", "maven"),
-      homepage := Some(url("https://github.com/evolution-gaming/kryo-macros")),
-      licenses := Seq(("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
-      scalacOptions ++= Seq(
-        "-encoding", "UTF-8",
-        "-feature",
-        "-unchecked",
-        "-deprecation",
-        "-Xlint",
-        "-Yno-adapted-args",
-        "-Ywarn-dead-code",
-        "-Xfuture",
-        "-Xmacro-settings:print-serializers"
-      )
-    ))
   ).aggregate(macros, benchmark)
 
 lazy val macros = project
+  .settings(commonSettings: _*)
   .settings(mimaSettings: _*)
   .settings(
     name := "kryo-macros",
@@ -70,6 +73,7 @@ lazy val macros = project
 
 lazy val benchmark = project
   .enablePlugins(JmhPlugin)
+  .settings(commonSettings: _*)
   .settings(
     name := "kryo-benchmark",
     publish := (),
