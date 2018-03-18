@@ -349,7 +349,10 @@ object Serializer {
       if (!tpe.typeSymbol.asClass.isCaseClass) c.error(c.enclosingPosition, s"$tpe must be a case class.")
 
       val annotations = tpe.members.collect {
-        case m: TermSymbol if m.annotations.nonEmpty => m.getter -> m.annotations.map(_.toString).toSet
+        case m: TermSymbol if {
+          m.info // to enforce the type information completeness and availability of annotations
+          m.annotations.nonEmpty
+        }  => m.getter -> m.annotations.map(_.toString).toSet
       }.toMap
 
       def notTransient(m: MethodSymbol) = !annotations.get(m).exists(_.contains("transient"))

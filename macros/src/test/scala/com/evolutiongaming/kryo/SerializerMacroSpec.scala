@@ -145,13 +145,10 @@ class SerializerMacroSpec extends WordSpec with Matchers {
     }
 
     "don't serialize and deserialize field is annotated by transient or just is not defined in constructor" in {
-      case class Transient(r: String, @transient t: String = "a") {
-        val ignored: String = "i" + r
-      }
+      val transientSerializer = Serializer.make[Transient]
 
       case class Required(s: String)
 
-      val transientSerializer = Serializer.make[Transient]
       val requiredSerializer = Serializer.make[Required]
       verifyFromTo(transientSerializer, Transient("VVV"), requiredSerializer, Required("VVV"))
       verifyFromTo(requiredSerializer, Required("VVV"), transientSerializer, Transient("VVV"))
@@ -402,4 +399,8 @@ class SerializerMacroSpec extends WordSpec with Matchers {
     finally out.close()
     out.getBuffer
   }
+}
+
+case class Transient(r: String, @transient t: String = "a") {
+  val ignored: String = "i" + r
 }
