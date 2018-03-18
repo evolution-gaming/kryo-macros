@@ -2,6 +2,7 @@ package com.evolutiongaming.kryo
 
 import java.io.ByteArrayOutputStream
 import java.time.Instant
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import com.esotericsoftware.kryo.Kryo
@@ -71,9 +72,10 @@ class SerializerMacroSpec extends WordSpec with Matchers {
     }
 
     "serialize and deserialize standard types" in {
-      case class Types(str: String, bd: BigDecimal, dt: DateTime, inst: Instant, dur: FiniteDuration)
+      case class Types(str: String, bd: BigDecimal, id: UUID, dt: DateTime, inst: Instant, dur: FiniteDuration)
 
-      verify(Serializer.make[Types], Types("test", 3, DateTime.now(), Instant.now(), FiniteDuration(1234, TimeUnit.MILLISECONDS)))
+      verify(Serializer.make[Types], Types("test", 3, new UUID(1L, 2L), DateTime.now(), Instant.now(),
+        FiniteDuration(1234, TimeUnit.MILLISECONDS)))
     }
 
     /**
@@ -97,10 +99,9 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verify(Serializer.make[Eith], Eith(Left("Error"), Right(42)))
     }
 
-    "serialize and deserialize Enumeration types" in {
-      case class Enum(enum: SuitEnum.SuitEnum)
-
-      verify(Serializer.make[Enum], Enum(SuitEnum.Spades))
+    "serialize and deserialize Enumeration & java.lang.Enum types" in {
+      case class Enums(enum: SuitEnum.SuitEnum, javaEnum: Suit)
+      verify(Serializer.make[Enums], Enums(SuitEnum.Spades, Suit.Hearts))
     }
 
     "serialize and deserialize Iterable types" in {
@@ -144,13 +145,10 @@ class SerializerMacroSpec extends WordSpec with Matchers {
     }
 
     "don't serialize and deserialize field is annotated by transient or just is not defined in constructor" in {
-      case class Transient(r: String, @transient t: String = "a") {
-        val ignored: String = "i" + r
-      }
+      val transientSerializer = Serializer.make[Transient]
 
       case class Required(s: String)
 
-      val transientSerializer = Serializer.make[Transient]
       val requiredSerializer = Serializer.make[Required]
       verifyFromTo(transientSerializer, Transient("VVV"), requiredSerializer, Required("VVV"))
       verifyFromTo(requiredSerializer, Required("VVV"), transientSerializer, Transient("VVV"))
@@ -162,12 +160,13 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       type AliasToOption = Option[String]
       type AliasToSet = Set[Int]
       case class CustomType(a: String)
-      case class Alias(map: AliasToMap, opt: AliasToOption, set: AliasToSet, either: AliasToEither[String], ct: CustomType)
+      case class Aliases(map: AliasToMap, opt: AliasToOption, set: AliasToSet, either: AliasToEither[String], ct: CustomType)
+      type As = Aliases
 
       type CustomSerializer = k.Serializer[CustomType]
       implicit val customSerializer: CustomSerializer = Serializer.make[CustomType]
 
-      verify(Serializer.make[Alias], Alias(Map("one" -> "1"), Some(""), Set(1), Right(1), CustomType("custom")))
+      verify(Serializer.make[As], Aliases(Map("one" -> "1"), Some(""), Set(1), Right(1), CustomType("custom")))
     }
 
     /**
@@ -400,4 +399,8 @@ class SerializerMacroSpec extends WordSpec with Matchers {
     finally out.close()
     out.getBuffer
   }
+}
+
+case class Transient(r: String, @transient t: String = "a") {
+  val ignored: String = "i" + r
 }
