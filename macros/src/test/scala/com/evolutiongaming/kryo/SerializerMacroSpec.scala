@@ -99,10 +99,9 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verify(Serializer.make[Eith], Eith(Left("Error"), Right(42)))
     }
 
-    "serialize and deserialize Enumeration types" in {
-      case class Enum(enum: SuitEnum.SuitEnum)
-
-      verify(Serializer.make[Enum], Enum(SuitEnum.Spades))
+    "serialize and deserialize Enumeration & java.lang.Enum types" in {
+      case class Enums(enum: SuitEnum.SuitEnum, javaEnum: Suit)
+      verify(Serializer.make[Enums], Enums(SuitEnum.Spades, Suit.Hearts))
     }
 
     "serialize and deserialize Iterable types" in {

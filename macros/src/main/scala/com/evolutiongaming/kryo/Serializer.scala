@@ -155,6 +155,8 @@ object Serializer {
             val value = valueClassArg(tpe)
             val t = valueClassArgType(tpe)
             genWriter(t, q"$arg.$value")
+          } else if (tpe.widen <:< typeOf[Enum[_]]) {
+            q"output.writeString($arg.name)"
           } else if (tpe.widen <:< typeOf[Enumeration#Value]) {
             q"output.writeString($arg.toString)"
           } else if (implSerializer.isDefined) {
@@ -322,6 +324,9 @@ object Serializer {
           } else if (isSupportedValueClass(tpe)) {
             val reader = genReader(valueClassArgType(tpe))
             q"new $tpe($reader)"
+          } else if (tpe.widen <:< typeOf[Enum[_]]) {
+            val comp = companion(tpe)
+            q"$comp.valueOf(input.readString)"
           } else if (tpe.widen <:< typeOf[Enumeration#Value]) {
             val TypeRef(SingleType(_, enumSymbol), _, _) = tpe
             q"$enumSymbol.withName(input.readString)"
