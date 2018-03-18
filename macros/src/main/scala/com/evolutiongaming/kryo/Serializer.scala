@@ -1,6 +1,7 @@
 package com.evolutiongaming.kryo
 
 import java.time.Instant
+import java.util.UUID
 
 import com.esotericsoftware.kryo
 import org.joda.time.DateTime
@@ -102,6 +103,8 @@ object Serializer {
             q"output.writeFloat($arg)"
           } else if (tpe.widen =:= typeOf[String]) {
             q"output.writeString($arg)"
+          } else if (tpe.widen =:= typeOf[UUID]) {
+            q"output.writeLong($arg.getMostSignificantBits); output.writeLong($arg.getLeastSignificantBits)"
           } else if (tpe =:= typeOf[BigDecimal]) {
             q"output.writeString($arg.underlying.toPlainString)"
           } else if (tpe =:= typeOf[DateTime]) {
@@ -183,6 +186,8 @@ object Serializer {
             q"input.readFloat"
           } else if (tpe.widen =:= typeOf[String]) {
             q"input.readString"
+          } else if (tpe.widen =:= typeOf[UUID]) {
+            q"new java.util.UUID(input.readLong, input.readLong)"
           } else if (tpe =:= typeOf[BigDecimal]) {
             q"scala.math.BigDecimal(input.readString)"
           } else if (tpe =:= typeOf[DateTime]) {

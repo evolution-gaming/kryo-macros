@@ -2,6 +2,7 @@ package com.evolutiongaming.kryo
 
 import java.io.ByteArrayOutputStream
 import java.time.Instant
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import com.esotericsoftware.kryo.Kryo
@@ -71,9 +72,10 @@ class SerializerMacroSpec extends WordSpec with Matchers {
     }
 
     "serialize and deserialize standard types" in {
-      case class Types(str: String, bd: BigDecimal, dt: DateTime, inst: Instant, dur: FiniteDuration)
+      case class Types(str: String, bd: BigDecimal, id: UUID, dt: DateTime, inst: Instant, dur: FiniteDuration)
 
-      verify(Serializer.make[Types], Types("test", 3, DateTime.now(), Instant.now(), FiniteDuration(1234, TimeUnit.MILLISECONDS)))
+      verify(Serializer.make[Types], Types("test", 3, new UUID(1L, 2L), DateTime.now(), Instant.now(),
+        FiniteDuration(1234, TimeUnit.MILLISECONDS)))
     }
 
     /**
