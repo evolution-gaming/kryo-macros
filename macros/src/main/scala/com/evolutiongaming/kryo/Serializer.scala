@@ -35,9 +35,13 @@ object Serializer {
     def serializerImpl[A: c.WeakTypeTag](c: blackbox.Context): c.Expr[kryo.Serializer[A]] = {
       import c.universe._
 
-      val tpe = weakTypeOf[A]
+      val tpe = weakTypeOf[A].dealias
 
       def companion(tpe: Type) = Ident(tpe.typeSymbol.companion)
+
+      def typeArg1(tpe: Type): Type = tpe.typeArgs.head.dealias
+
+      def typeArg2(tpe: Type): Type = tpe.typeArgs.tail.head.dealias
 
       def hasSingleArgPublicConstructor(tpe: Type) = tpe.decls.exists {
         case m: MethodSymbol =>
@@ -114,7 +118,7 @@ object Serializer {
           } else if (tpe =:= typeOf[FiniteDuration]) {
             q"output.writeLong($arg.toMillis)"
           } else if (tpe <:< typeOf[Option[_]]) withWriterFor(tpe, arg) {
-            val t = tpe.typeArgs.head.dealias
+            val t = typeArg1(tpe)
             val emptiable = annotations.contains("com.evolutiongaming.kryo.Empty")
             if (emptiable && t =:= typeOf[String])
               q"""output.writeString(if (x.isEmpty) "" else x.get)"""
@@ -123,9 +127,8 @@ object Serializer {
             else
               q"if (x.isEmpty) output.writeInt(0) else { output.writeInt(1); ${genWriter(t, q"x.get")} }"
           } else if (tpe <:< typeOf[Either[_, _]]) withWriterFor(tpe, arg) {
-            val List(lt, rt) = tpe.typeArgs
-            val lf = genWriter(lt.dealias, q"l")
-            val rf = genWriter(rt.dealias, q"r")
+            val lf = genWriter(typeArg1(tpe), q"l")
+            val rf = genWriter(typeArg2(tpe), q"r")
             q"""
                x match {
                  case Left(l) => output.writeInt(0); $lf
@@ -133,23 +136,21 @@ object Serializer {
                }
              """
           } else if (tpe <:< typeOf[mutable.LongMap[_]] || tpe <:< typeOf[LongMap[_]]) withWriterFor(tpe, arg) {
-            val t = tpe.typeArgs.head.dealias
+            val t = typeArg1(tpe)
             val f = genWriter(t, q"kv._2")
             q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach { kv => output.writeLong(kv._1); $f }"
           } else if (tpe <:< typeOf[IntMap[_]]) withWriterFor(tpe, arg) {
-            val t = tpe.typeArgs.head.dealias
+            val t = typeArg1(tpe)
             val f = genWriter(t, q"kv._2")
             q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach { kv => output.writeInt(kv._1); $f }"
           } else if (tpe <:< typeOf[mutable.Map[_, _]] || tpe <:< typeOf[Map[_, _]]) withWriterFor(tpe, arg) {
-            val List(kt, vt) = tpe.typeArgs
-            val kf = genWriter(kt.dealias, q"kv._1")
-            val vf = genWriter(vt.dealias, q"kv._2")
+            val kf = genWriter(typeArg1(tpe), q"kv._1")
+            val vf = genWriter(typeArg2(tpe), q"kv._2")
             q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach { kv => $kf; $vf }"
           } else if (tpe <:< typeOf[BitSet] || tpe <:< typeOf[mutable.BitSet]) withWriterFor(tpe, arg) {
             q"val bits = x.toBitMask; output.writeInt(bits.length); output.writeLongs(bits, true)"
           } else if (tpe <:< typeOf[Iterable[_]]) withWriterFor(tpe, arg) {
-            val t = tpe.typeArgs.head.dealias
-            val f = genWriter(t, q"a")
+            val f = genWriter(typeArg1(tpe), q"a")
             q"val s = x.size; output.writeInt(s); if (s > 0) x.foreach(a => $f)"
           } else if (isSupportedValueClass(tpe)) {
             val value = valueClassArg(tpe)
@@ -199,9 +200,9 @@ object Serializer {
           } else if (tpe =:= typeOf[FiniteDuration]) {
             q"new scala.concurrent.duration.FiniteDuration(input.readLong, java.util.concurrent.TimeUnit.MILLISECONDS).toCoarsest.asInstanceOf[scala.concurrent.duration.FiniteDuration]"
           } else if (tpe <:< typeOf[Option[_]]) withReaderFor(tpe) {
-            val typeArg = tpe.typeArgs.head.dealias
+            val t = typeArg1(tpe)
             val emptiable = annotations.contains("com.evolutiongaming.kryo.Empty")
-            if (emptiable && typeArg =:= typeOf[String])
+            if (emptiable && t =:= typeOf[String])
               q"""
                  val rs = input.readString
                  if (rs eq null) None
@@ -210,24 +211,23 @@ object Serializer {
                    if (s.isEmpty) None else Some(s)
                  }
                """
-            else if (emptiable && isSupportedValueClass(typeArg) && valueClassArgType(typeArg) =:= typeOf[String])
+            else if (emptiable && isSupportedValueClass(t) && valueClassArgType(t) =:= typeOf[String])
               q"""
                  val rs = input.readString
                  if (rs eq null) None
                  else {
                    val s = rs.trim
-                   if (s.isEmpty) None else Some(new $typeArg(s))
+                   if (s.isEmpty) None else Some(new $t(s))
                  }
                """
             else
-              q"if (input.readInt == 0) None else Some(${genReader(typeArg)})"
+              q"if (input.readInt == 0) None else Some(${genReader(t)})"
           } else if (tpe <:< typeOf[Either[_, _]]) withReaderFor(tpe) {
-            val List(lt, rt) = tpe.typeArgs
-            val lf = genReader(lt.dealias)
-            val rf = genReader(rt.dealias)
+            val lf = genReader(typeArg1(tpe))
+            val rf = genReader(typeArg2(tpe))
             q"if (input.readInt == 0) scala.util.Left($lf) else scala.util.Right($rf)"
           } else if (tpe <:< typeOf[mutable.LongMap[_]]) withReaderFor(tpe) {
-            val t = tpe.typeArgs.head.dealias
+            val t = typeArg1(tpe)
             val f = genReader(t)
             val comp = companion(tpe)
             q"""
@@ -241,7 +241,7 @@ object Serializer {
                map
              """
           } else if (tpe <:< typeOf[LongMap[_]]) withReaderFor(tpe) {
-            val t = tpe.typeArgs.head.dealias
+            val t = typeArg1(tpe)
             val f = genReader(t)
             val comp = companion(tpe)
             q"""
@@ -255,7 +255,7 @@ object Serializer {
                map
              """
           } else if (tpe <:< typeOf[IntMap[_]]) withReaderFor(tpe) {
-            val t = tpe.typeArgs.head.dealias
+            val t = typeArg1(tpe)
             val f = genReader(t)
             val comp = companion(tpe)
             q"""
@@ -269,7 +269,8 @@ object Serializer {
                map
              """
           } else if (tpe <:< typeOf[mutable.Map[_, _]]) withReaderFor(tpe) {
-            val List(kt, vt) = tpe.typeArgs.map(_.dealias)
+            val kt = typeArg1(tpe)
+            val vt = typeArg2(tpe)
             val kf = genReader(kt)
             val vf = genReader(vt)
             val comp = companion(tpe)
@@ -284,7 +285,8 @@ object Serializer {
                map
              """
           } else if (tpe <:< typeOf[Map[_, _]]) withReaderFor(tpe) {
-            val List(kt, vt) = tpe.typeArgs.map(_.dealias)
+            val kt = typeArg1(tpe)
+            val vt = typeArg2(tpe)
             val kf = genReader(kt)
             val vf = genReader(vt)
             val comp = companion(tpe)
@@ -306,7 +308,7 @@ object Serializer {
                else $comp.empty
              """
           } else if (tpe <:< typeOf[Iterable[_]]) withReaderFor(tpe) {
-            val t = tpe.typeArgs.head.dealias
+            val t = typeArg1(tpe)
             val f = genReader(t)
             val comp = companion(tpe)
             q"""

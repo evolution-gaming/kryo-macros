@@ -163,12 +163,13 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       type AliasToOption = Option[String]
       type AliasToSet = Set[Int]
       case class CustomType(a: String)
-      case class Alias(map: AliasToMap, opt: AliasToOption, set: AliasToSet, either: AliasToEither[String], ct: CustomType)
+      case class Aliases(map: AliasToMap, opt: AliasToOption, set: AliasToSet, either: AliasToEither[String], ct: CustomType)
+      type As = Aliases
 
       type CustomSerializer = k.Serializer[CustomType]
       implicit val customSerializer: CustomSerializer = Serializer.make[CustomType]
 
-      verify(Serializer.make[Alias], Alias(Map("one" -> "1"), Some(""), Set(1), Right(1), CustomType("custom")))
+      verify(Serializer.make[As], Aliases(Map("one" -> "1"), Some(""), Set(1), Right(1), CustomType("custom")))
     }
 
     /**
