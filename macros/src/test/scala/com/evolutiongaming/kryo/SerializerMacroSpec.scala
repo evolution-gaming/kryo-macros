@@ -9,12 +9,14 @@ import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
 import com.esotericsoftware.{kryo => k}
 import org.joda.time.DateTime
+import org.scalatest.exceptions.TestFailedException
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.collection.immutable.{BitSet, IntMap, LongMap}
+import scala.collection.immutable.{BitSet, IntMap, List, LongMap}
 import scala.collection.mutable
 import scala.concurrent.duration._
 
+case class Id[A](value: A) extends AnyVal
 case class PlayerId(value: String) extends AnyVal
 case class IntId(value: Int) extends AnyVal
 class ValWithPrivateConstructor private(val value: String) extends AnyVal
@@ -173,6 +175,33 @@ class SerializerMacroSpec extends WordSpec with Matchers {
 
       verify(Serializer.make[As], Aliases(Map("one" -> "1"), Some(""), Set(1), Right(1), CustomType("custom")))
     }
+
+    "serialize and deserialize case classes and value classes with first-order type parameters" in {
+      case class FirstOrderType[A, B](a: A, b: B, oa: Option[A], bs: List[B])
+
+      verify(Serializer.make[FirstOrderType[Int, String]],
+        FirstOrderType[Int, String](1, "VVV", Some(2), List("VVV", "WWW")))
+      verify(Serializer.make[FirstOrderType[Id[Int], Id[String]]],
+        FirstOrderType[Id[Int], Id[String]](Id(1), Id("VVV"), Some(Id(2)), List(Id("VVV"), Id("WWW"))))
+    }
+    "don't generate serializer for first-order types that are specified using 'Any' type parameter" in {
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class FirstOrderType[A](a: A)
+          |Serializer.make[FirstOrderType[_]]""".stripMargin
+      }).getMessage.contains ("class type required but FirstOrderType[_] found"))
+    }
+/*
+    "serialize and deserialize case classes with higher-kinded type parameters" in {
+      import scala.language.higherKinds
+
+      case class HigherKindedType[F[_]](f: F[Int], fs: F[HigherKindedType[F]])
+
+      verify(Serializer.make[HigherKindedType[Option]],
+        HigherKindedType[Option](Some(1), Some(HigherKindedType[Option](Some(2), None))))
+      verify(Serializer.make[HigherKindedType[List]],
+        HigherKindedType[List](List(1), List(HigherKindedType[List](List(2), Nil))))
+    }
+*/
 
     /**
       * When [[Serializer]] finds an implicit [[k.Serializer]] for given field's type

@@ -52,9 +52,18 @@ object Serializer {
       def isSupportedValueClass(tpe: Type) =
         tpe <:< typeOf[AnyVal] && tpe.typeSymbol.asClass.isDerivedValueClass && hasSingleArgPublicConstructor(tpe)
 
+      def resolveConcreteType(tpe: Type, mtpe: Type): Type = {
+        val tpeTypeParams =
+          if (tpe.typeSymbol.isClass) tpe.typeSymbol.asClass.typeParams
+          else Nil
+        if (tpeTypeParams.isEmpty) mtpe
+        else mtpe.substituteTypes(tpeTypeParams, tpe.typeArgs)
+      }
+
       def valueClassArg(tpe: Type) = tpe.decls.head  // for value classes, first declaration is its single field value
 
-      def valueClassArgType(tpe: Type) = valueClassArg(tpe).asMethod.returnType.dealias
+      def valueClassArgType(tpe: Type) =
+        resolveConcreteType(tpe, valueClassArg(tpe).asMethod.returnType.dealias)
 
       case class Reader(name: TermName, tree: Tree)
       val readers = new mutable.LinkedHashMap[Type, Reader]
@@ -339,9 +348,9 @@ object Serializer {
           }
         }
 
-        val tpe = m.returnType.dealias
-        val writer = genWriter(tpe, q"x.$m")
-        val reader = genReader(tpe)
+        val mtpe = resolveConcreteType(tpe, m.returnType.dealias)
+        val writer = genWriter(mtpe, q"x.$m")
+        val reader = genReader(mtpe)
         val namedArgReader = q"$m = $reader"
         writer -> namedArgReader
       }
