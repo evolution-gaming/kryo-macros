@@ -95,6 +95,10 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verify(Serializer.make[Opt], Opt(None, Some(1)))
     }
 
+    "serialize and deserialize tuples" in {
+      verify(Serializer.make[(Int, String, Option[IntId])], (1, "VVV", Some(IntId(2))))
+    }
+
     "serialize and deserialize Either" in {
       case class Eith(left: Either[String, Int], right: Either[String, Int])
 

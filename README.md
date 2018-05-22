@@ -5,7 +5,9 @@ Scala macros that generate `com.esotericsoftware.kryo.Serializer` implementation
 ## Features and limitations
 
 - On top level only case classes are supported
-- Fields of case classes can be other case classes, Scala collections, options, primitive or `AnyVal` types & classes, Scala enums, standard types & classes: `String`, `Either`, `BigDecimal`, `java.time.Instant`, `scala.concurrent.duration.FiniteDuration`, `org.joda.time.DateTime`
+- Fields of case classes can be other case classes, Scala collections, options, primitive or `AnyVal` types & classes, 
+  tuples, Scala enums, standard types & classes: `String`, `Either`, `BigDecimal`, `java.time.Instant`, 
+  `scala.concurrent.duration.FiniteDuration`, `org.joda.time.DateTime`
 - Fields can be annotated as transient or just be not defined in constructor to avoid parsing and serializing 
 - For nested structures need to generate serializers for all case classes 
 - Implicitly defined mapping helpers are supported for ADT structures, simple alternative mappings, etc.
