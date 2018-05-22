@@ -167,22 +167,6 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verifyFromTo(requiredSerializer, Required("VVV"), transientSerializer, Transient("VVV"))
     }
 
-    "serialize and deserialize respecting type aliases" in {
-      type AliasToMap = Map[String, String]
-      type AliasToEither[L] = Either[L, Int]
-      type AliasToOption = Option[String]
-      type AliasToSet = Set[Int]
-      type Id = String
-      case class CustomType(a: Id)
-      case class Aliases(map: AliasToMap, opt: AliasToOption, set: AliasToSet, either: AliasToEither[String], ct: CustomType)
-      type As = Aliases
-
-      type CustomSerializer = k.Serializer[CustomType]
-      implicit val customSerializer: CustomSerializer = Serializer.make[CustomType]
-
-      verify(Serializer.make[As], Aliases(Map("one" -> "1"), Some(""), Set(1), Right(1), CustomType("custom")))
-    }
-
     "serialize and deserialize case classes and value classes with first-order type parameters" in {
       case class FirstOrderType[A, B](a: A, b: B, oa: Option[A], bs: List[B])
 
@@ -321,7 +305,6 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verify(userSerializer, Player("satoshi"))
     }
 
-
     /**
       * Often it's useful to declare serializers of ADT constructors inside the common serializer.
       * It's possible with [[Serializer.inner]] functions.
@@ -356,6 +339,37 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verify(ss, B("test"))
       verify(ss, C("test"))
       verify(ss, D(Black))
+    }
+
+    "serialize and deserialize respecting type aliases" in {
+      sealed trait TreeType[A]
+      case class Node[A](left: Node[A], right: Node[A]) extends TreeType[A]
+      case class Leaf[A](value: A) extends TreeType[A]
+
+      type AliasToIntTree = TreeType[Int]
+      type AliasToIntNode = Node[Int]
+      type AliasToIntLeaf = Leaf[Int]
+      type AliasToMap = Map[String, String]
+      type AliasToEither[L] = Either[L, Int]
+      type AliasToOption = Option[String]
+      type AliasToSet = Set[Int]
+      type AliasToString = String
+
+      case class CustomType(a: AliasToString)
+      case class Aliases(m: AliasToMap, o: AliasToOption, s: AliasToSet, e: AliasToEither[AliasToString],
+                         c: CustomType, t: AliasToIntTree)
+
+      type AliasToAliases = Aliases
+      type AliasToTreeSerializer = k.Serializer[AliasToIntTree]
+      type AliasToCustomTypeSerializer = k.Serializer[CustomType]
+
+      implicit val colorSerializer: AliasToTreeSerializer = Serializer.makeCommon[AliasToIntTree] {
+        case 1 => Serializer.inner[AliasToIntNode]
+        case 2 => Serializer.inner[AliasToIntLeaf]
+      }
+      implicit val customSerializer: AliasToCustomTypeSerializer = Serializer.make[CustomType]
+
+      verify(Serializer.make[AliasToAliases], Aliases(Map("one" -> "1"), Some(""), Set(2), Right(3), CustomType("VVV"), Leaf(4)))
     }
 
     "serialize and deserialize a complex data structure using all possible crap described above" in {
