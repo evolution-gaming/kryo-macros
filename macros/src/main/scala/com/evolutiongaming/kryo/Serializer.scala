@@ -50,7 +50,8 @@ object Serializer {
       }
 
       def isSupportedValueClass(tpe: Type) =
-        tpe <:< typeOf[AnyVal] && tpe.typeSymbol.asClass.isDerivedValueClass && hasSingleArgPublicConstructor(tpe)
+        tpe <:< typeOf[AnyVal] && tpe.typeSymbol.isClass &&
+          tpe.typeSymbol.asClass.isDerivedValueClass && hasSingleArgPublicConstructor(tpe)
 
       def resolveConcreteType(tpe: Type, mtpe: Type): Type = {
         val tpeTypeParams =
@@ -355,7 +356,8 @@ object Serializer {
         writer -> namedArgReader
       }
 
-      if (!tpe.typeSymbol.asClass.isCaseClass) c.error(c.enclosingPosition, s"$tpe must be a case class.")
+      if (!(tpe.typeSymbol.isClass && tpe.typeSymbol.asClass.isCaseClass))
+        c.error(c.enclosingPosition, s"$tpe must be a case class.")
 
       val annotations = tpe.members.collect {
         case m: TermSymbol if {
