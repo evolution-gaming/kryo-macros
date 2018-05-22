@@ -41,6 +41,7 @@ lazy val commonSettings = Seq(
   licenses := Seq(("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
   scalacOptions ++= Seq(
     "-encoding", "UTF-8",
+    "-target:jvm-1.8",
     "-feature",
     "-unchecked",
     "-deprecation",
@@ -48,7 +49,11 @@ lazy val commonSettings = Seq(
     "-Ywarn-dead-code",
     "-Xfuture",
     "-Xmacro-settings:print-serializers"
-  )
+  ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, x)) if x >= 12 => Seq("-opt:l:method")
+    case Some((2, x)) if x == 11 => Seq("-Ybackend:GenBCode", "-Ydelambdafy:inline")
+    case _ => Seq()
+  })
 )
 
 lazy val kryo = project.in(file("."))
