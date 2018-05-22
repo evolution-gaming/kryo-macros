@@ -1,5 +1,6 @@
-import sbt.Keys.scalacOptions
+import sbt.Keys.{libraryDependencies, scalacOptions}
 import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
+
 import scala.sys.process._
 
 lazy val oldVersion = "git describe --abbrev=0".!!.trim.replaceAll("^v", "")
@@ -28,8 +29,8 @@ def mimaSettings = mimaDefaultSettings ++ Seq(
 
 lazy val commonSettings = Seq(
   organization := "com.evolutiongaming",
-  scalaVersion := "2.12.4",
-  crossScalaVersions := Seq("2.12.4", "2.11.12"),
+  scalaVersion := "2.12.6",
+  crossScalaVersions := Seq("2.13.0-M4", "2.13.0-M3", "2.12.6", "2.11.12"),
   releaseCrossBuild := true,
   startYear := Some(2016),
   organizationName := "Evolution Gaming",
@@ -40,21 +41,25 @@ lazy val commonSettings = Seq(
   licenses := Seq(("Apache-2.0", url("http://www.apache.org/licenses/LICENSE-2.0"))),
   scalacOptions ++= Seq(
     "-encoding", "UTF-8",
+    "-target:jvm-1.8",
     "-feature",
     "-unchecked",
     "-deprecation",
     "-Xlint",
-    "-Yno-adapted-args",
     "-Ywarn-dead-code",
     "-Xfuture",
     "-Xmacro-settings:print-serializers"
-  )
+  ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
+    case Some((2, x)) if x >= 12 => Seq("-opt:l:method")
+    case Some((2, x)) if x == 11 => Seq("-Ybackend:GenBCode", "-Ydelambdafy:inline")
+    case _ => Seq()
+  })
 )
 
 lazy val kryo = project.in(file("."))
   .settings(commonSettings: _*)
   .settings(
-    publish := (),
+    publish := ((): Unit),
   ).aggregate(macros, benchmark)
 
 lazy val macros = project
@@ -64,11 +69,22 @@ lazy val macros = project
     name := "kryo-macros",
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "com.esotericsoftware" % "kryo" % "4.0.1",
-      "joda-time" % "joda-time" % "2.8",
-      "org.joda" % "joda-convert" % "1.7",
-      "org.scalatest" %% "scalatest" % "3.0.3" % Test
-    )
+      "com.esotericsoftware" % "kryo" % "4.0.2",
+      "joda-time" % "joda-time" % "2.9.9",
+      "org.joda" % "joda-convert" % "2.0.1"
+    ),
+    libraryDependencies ++= {
+      val scalaV = scalaVersion.value
+      CrossVersion.partialVersion(scalaV) match {
+        case Some((2, v)) if v >= 13 && scalaV != "2.13.0-M3" =>
+          // TODO scalatest for Scala 2.13.0-M4
+          Nil
+        case _ =>
+          Seq(
+            "org.scalatest" %% "scalatest" % "3.0.5-M1" % Test
+          )
+      }
+    }
   )
 
 lazy val benchmark = project
@@ -76,9 +92,20 @@ lazy val benchmark = project
   .settings(commonSettings: _*)
   .settings(
     name := "kryo-benchmark",
-    publish := (),
+    publish := ((): Unit),
     libraryDependencies ++= Seq(
-      "pl.project13.scala" % "sbt-jmh-extras" % "0.3.2",
-      "org.scalatest" %% "scalatest" % "3.0.3" % Test
-    )
+      "pl.project13.scala" % "sbt-jmh-extras" % "0.3.4"
+    ),
+    libraryDependencies ++= {
+      val scalaV = scalaVersion.value
+      CrossVersion.partialVersion(scalaV) match {
+        case Some((2, v)) if v >= 13 && scalaV != "2.13.0-M3" =>
+          // TODO scalatest for Scala 2.13.0-M4
+          Nil
+        case _ =>
+          Seq(
+            "org.scalatest" %% "scalatest" % "3.0.5-M1" % Test
+          )
+      }
+    }
   ).dependsOn(macros)

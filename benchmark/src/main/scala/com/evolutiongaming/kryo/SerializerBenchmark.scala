@@ -9,33 +9,42 @@ import org.openjdk.jmh.annotations._
 import scala.collection.immutable.{BitSet, IntMap, LongMap}
 import scala.collection.mutable
 
-@State(Scope.Benchmark)
-@Warmup(iterations = 5)
-@Measurement(iterations = 5)
-@Fork(1)
-@BenchmarkMode(Array(Mode.Throughput))
-@OutputTimeUnit(TimeUnit.SECONDS)
+@State(Scope.Thread)
+@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Fork(value = 3, jvmArgs = Array(
+  "-server",
+  "-Xms1g",
+  "-Xmx1g",
+  "-XX:NewSize=512m",
+  "-XX:MaxNewSize=512m",
+  "-XX:InitialCodeCacheSize=256m",
+  "-XX:ReservedCodeCacheSize=256m",
+  "-XX:+UseParallelGC",
+  "-XX:-UseBiasedLocking",
+  "-XX:+AlwaysPreTouch"
+))
 class SerializerBenchmark {
-  private val kryo = new Kryo
-  private val buf = new Array[Byte](1024)
-  private val in = new Input(buf)
-  private val out = new Output(buf)
-  private val anyRefsSerializer = Serializer.make[AnyRefs]
-  private val iterablesSerializer = Serializer.make[Iterables]
-  private val mapsSerializer = Serializer.make[Maps]
-  private val mutableMapsSerializer = Serializer.make[MutableMaps]
-  private val intAndLongMapsSerializer = Serializer.make[IntAndLongMaps]
-  private val bitSetsSerializer = Serializer.make[BitSets]
-  private val primitivesSerializer = Serializer.make[Primitives]
-  val anyRefsObj = AnyRefs("s", 1, Some("os"))
-  val iterablesObj = Iterables(List("1", "2", "3"), Set(4, 5, 6), List(Set(1, 2), Set()))
-  val mapsObj = Maps(Map("1" -> 1.1, "2" -> 2.2), Map(1 -> Map(3L -> 3.3), 2 -> Map.empty[Long, Double]))
-  val mutableMapsObj = MutableMaps(mutable.Map("1" -> 1.1, "2" -> 2.2),
+  private var kryo = new Kryo
+  private var buf = new Array[Byte](1024)
+  private var in = new Input(buf)
+  private var out = new Output(buf)
+  private var anyRefsSerializer = Serializer.make[AnyRefs]
+  private var iterablesSerializer = Serializer.make[Iterables]
+  private var mapsSerializer = Serializer.make[Maps]
+  private var mutableMapsSerializer = Serializer.make[MutableMaps]
+  private var intAndLongMapsSerializer = Serializer.make[IntAndLongMaps]
+  private var bitSetsSerializer = Serializer.make[BitSets]
+  private var primitivesSerializer = Serializer.make[Primitives]
+  var anyRefsObj = AnyRefs("s", 1, Some("os"))
+  var iterablesObj = Iterables(List("1", "2", "3"), Set(4, 5, 6), List(Set(1, 2), Set()))
+  var mapsObj = Maps(Map("1" -> 1.1, "2" -> 2.2), Map(1 -> Map(3L -> 3.3), 2 -> Map.empty[Long, Double]))
+  var mutableMapsObj = MutableMaps(mutable.Map("1" -> 1.1, "2" -> 2.2),
     mutable.LinkedHashMap(1 -> mutable.OpenHashMap(3L -> 3.3), 2 -> mutable.OpenHashMap.empty[Long, Double]))
-  val intAndLongMapsObj = IntAndLongMaps(IntMap(1 -> 1.1, 2 -> 2.2),
+  var intAndLongMapsObj = IntAndLongMaps(IntMap(1 -> 1.1, 2 -> 2.2),
     LongMap(1L -> mutable.LongMap(3L -> 3.3), 2L -> mutable.LongMap.empty[Double]))
-  val bitSetsObj = BitSets(BitSet(1, 2, 3), mutable.BitSet(1001, 1002, 1003))
-  val primitivesObj = Primitives(1, 2, 3, 4, bl = true, 'V', 1.1, 2.2f)
+  var bitSetsObj = BitSets(BitSet(1, 2, 3), mutable.BitSet(1001, 1002, 1003))
+  var primitivesObj = Primitives(1, 2, 3, 4, bl = true, 'V', 1.1, 2.2f)
 
   @Benchmark
   def writeThanReadAnyRefs(): AnyRefs = writeThanRead(anyRefsSerializer, anyRefsObj)

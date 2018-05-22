@@ -9,12 +9,14 @@ import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
 import com.esotericsoftware.{kryo => k}
 import org.joda.time.DateTime
+import org.scalatest.exceptions.TestFailedException
 import org.scalatest.{Matchers, WordSpec}
 
-import scala.collection.immutable.{BitSet, IntMap, LongMap}
+import scala.collection.immutable.{BitSet, IntMap, List, LongMap}
 import scala.collection.mutable
 import scala.concurrent.duration._
 
+case class Id[A](value: A) extends AnyVal
 case class PlayerId(value: String) extends AnyVal
 case class IntId(value: Int) extends AnyVal
 class ValWithPrivateConstructor private(val value: String) extends AnyVal
@@ -59,7 +61,10 @@ object ValWithPrivateConstructor {
 class SerializerMacroSpec extends WordSpec with Matchers {
   object SuitEnum extends Enumeration {
     type SuitEnum = Value
-    val Hearts, Spades, Diamonds, Clubs = Value
+    val Hearts: SuitEnum = Value(1, "Hearts") // WARNING: for most efficiency set names explicitly in your enumerations,
+    val Spades: SuitEnum = Value(2, "Spades") // you still not sure then please look and check that following
+    val Diamonds: SuitEnum = Value(3, "Diamonds") // synchronized block will not affect your system and its performance:
+    val Clubs: SuitEnum = Value(4, "Clubs") // https://github.com/scala/scala/blob/1692ae306dc9a5ff3feebba6041348dfdee7cfb5/src/library/scala/Enumeration.scala#L203
   }
 
   lazy val kryo = new Kryo
@@ -91,6 +96,10 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       case class Opt(a: Option[String], b: Option[Int])
 
       verify(Serializer.make[Opt], Opt(None, Some(1)))
+    }
+
+    "serialize and deserialize tuples" in {
+      verify(Serializer.make[(Int, String, Option[IntId])], (1, "VVV", Some(IntId(2))))
     }
 
     "serialize and deserialize Either" in {
@@ -158,20 +167,33 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verifyFromTo(requiredSerializer, Required("VVV"), transientSerializer, Transient("VVV"))
     }
 
-    "serialize and deserialize respecting type aliases" in {
-      type AliasToMap = Map[String, String]
-      type AliasToEither[L] = Either[L, Int]
-      type AliasToOption = Option[String]
-      type AliasToSet = Set[Int]
-      case class CustomType(a: String)
-      case class Aliases(map: AliasToMap, opt: AliasToOption, set: AliasToSet, either: AliasToEither[String], ct: CustomType)
-      type As = Aliases
+    "serialize and deserialize case classes and value classes with first-order type parameters" in {
+      case class FirstOrderType[A, B](a: A, b: B, oa: Option[A], bs: List[B])
 
-      type CustomSerializer = k.Serializer[CustomType]
-      implicit val customSerializer: CustomSerializer = Serializer.make[CustomType]
-
-      verify(Serializer.make[As], Aliases(Map("one" -> "1"), Some(""), Set(1), Right(1), CustomType("custom")))
+      verify(Serializer.make[FirstOrderType[Int, String]],
+        FirstOrderType[Int, String](1, "VVV", Some(2), List("VVV", "WWW")))
+      verify(Serializer.make[FirstOrderType[Id[Int], Id[String]]],
+        FirstOrderType[Id[Int], Id[String]](Id(1), Id("VVV"), Some(Id(2)), List(Id("VVV"), Id("WWW"))))
     }
+
+    "don't generate serializer for first-order types that are specified using 'Any' type parameter" in {
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class FirstOrderType[A](a: A)
+          |Serializer.make[FirstOrderType[_]]""".stripMargin
+      }).getMessage.contains ("class type required but FirstOrderType[_] found"))
+    }
+/*
+    "serialize and deserialize case classes with higher-kinded type parameters" in {
+      import scala.language.higherKinds
+
+      case class HigherKindedType[F[_]](f: F[Int], fs: F[HigherKindedType[F]])
+
+      verify(Serializer.make[HigherKindedType[Option]],
+        HigherKindedType[Option](Some(1), Some(HigherKindedType[Option](Some(2), None))))
+      verify(Serializer.make[HigherKindedType[List]],
+        HigherKindedType[List](List(1), List(HigherKindedType[List](List(2), Nil))))
+    }
+*/
 
     /**
       * When [[Serializer]] finds an implicit [[k.Serializer]] for given field's type
@@ -283,7 +305,6 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verify(userSerializer, Player("satoshi"))
     }
 
-
     /**
       * Often it's useful to declare serializers of ADT constructors inside the common serializer.
       * It's possible with [[Serializer.inner]] functions.
@@ -320,6 +341,37 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verify(ss, D(Black))
     }
 
+    "serialize and deserialize respecting type aliases" in {
+      sealed trait TreeType[A]
+      case class Node[A](left: Node[A], right: Node[A]) extends TreeType[A]
+      case class Leaf[A](value: A) extends TreeType[A]
+
+      type AliasToIntTree = TreeType[Int]
+      type AliasToIntNode = Node[Int]
+      type AliasToIntLeaf = Leaf[Int]
+      type AliasToMap = Map[String, String]
+      type AliasToEither[L] = Either[L, Int]
+      type AliasToOption = Option[String]
+      type AliasToSet = Set[Int]
+      type AliasToString = String
+
+      case class CustomType(a: AliasToString)
+      case class Aliases(m: AliasToMap, o: AliasToOption, s: AliasToSet, e: AliasToEither[AliasToString],
+                         c: CustomType, t: AliasToIntTree)
+
+      type AliasToAliases = Aliases
+      type AliasToTreeSerializer = k.Serializer[AliasToIntTree]
+      type AliasToCustomTypeSerializer = k.Serializer[CustomType]
+
+      implicit val colorSerializer: AliasToTreeSerializer = Serializer.makeCommon[AliasToIntTree] {
+        case 1 => Serializer.inner[AliasToIntNode]
+        case 2 => Serializer.inner[AliasToIntLeaf]
+      }
+      implicit val customSerializer: AliasToCustomTypeSerializer = Serializer.make[CustomType]
+
+      verify(Serializer.make[AliasToAliases], Aliases(Map("one" -> "1"), Some(""), Set(2), Right(3), CustomType("VVV"), Leaf(4)))
+    }
+
     "serialize and deserialize a complex data structure using all possible crap described above" in {
       trait GameType
       case object Baccarat extends GameType
@@ -328,7 +380,8 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       case class Game(gameType: GameType)
 
       object ActionType extends Enumeration {
-        val StartBetting, StopBetting = Value
+        val StartBetting = Value(1, "StartBetting")
+        val StopBetting = Value(2, "StopBetting")
       }
 
       trait Command
