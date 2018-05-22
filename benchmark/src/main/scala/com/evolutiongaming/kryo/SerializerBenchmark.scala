@@ -9,12 +9,21 @@ import org.openjdk.jmh.annotations._
 import scala.collection.immutable.{BitSet, IntMap, LongMap}
 import scala.collection.mutable
 
-@State(Scope.Benchmark)
-@Warmup(iterations = 5)
-@Measurement(iterations = 5)
-@Fork(1)
-@BenchmarkMode(Array(Mode.Throughput))
-@OutputTimeUnit(TimeUnit.SECONDS)
+@State(Scope.Thread)
+@Warmup(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
+@Fork(value = 3, jvmArgs = Array(
+  "-server",
+  "-Xms1g",
+  "-Xmx1g",
+  "-XX:NewSize=512m",
+  "-XX:MaxNewSize=512m",
+  "-XX:InitialCodeCacheSize=256m",
+  "-XX:ReservedCodeCacheSize=256m",
+  "-XX:+UseParallelGC",
+  "-XX:-UseBiasedLocking",
+  "-XX:+AlwaysPreTouch"
+))
 class SerializerBenchmark {
   private val kryo = new Kryo
   private val buf = new Array[Byte](1024)
