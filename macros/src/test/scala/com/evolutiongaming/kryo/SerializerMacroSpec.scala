@@ -163,7 +163,8 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       type AliasToEither[L] = Either[L, Int]
       type AliasToOption = Option[String]
       type AliasToSet = Set[Int]
-      case class CustomType(a: String)
+      type Id = String
+      case class CustomType(a: Id)
       case class Aliases(map: AliasToMap, opt: AliasToOption, set: AliasToSet, either: AliasToEither[String], ct: CustomType)
       type As = Aliases
 

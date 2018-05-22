@@ -54,7 +54,7 @@ object Serializer {
 
       def valueClassArg(tpe: Type) = tpe.decls.head  // for value classes, first declaration is its single field value
 
-      def valueClassArgType(tpe: Type) = valueClassArg(tpe).asMethod.returnType
+      def valueClassArgType(tpe: Type) = valueClassArg(tpe).asMethod.returnType.dealias
 
       case class Reader(name: TermName, tree: Tree)
       val readers = new mutable.LinkedHashMap[Type, Reader]
