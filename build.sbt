@@ -28,8 +28,8 @@ def mimaSettings = mimaDefaultSettings ++ Seq(
 
 lazy val commonSettings = Seq(
   organization := "com.evolutiongaming",
-  scalaVersion := "2.12.4",
-  crossScalaVersions := Seq("2.12.4", "2.11.12"),
+  scalaVersion := "2.12.6",
+  crossScalaVersions := Seq("2.13.0-M3", "2.12.6", "2.11.12"),
   releaseCrossBuild := true,
   startYear := Some(2016),
   organizationName := "Evolution Gaming",
@@ -54,7 +54,7 @@ lazy val commonSettings = Seq(
 lazy val kryo = project.in(file("."))
   .settings(commonSettings: _*)
   .settings(
-    publish := (),
+    publish := ((): Unit),
   ).aggregate(macros, benchmark)
 
 lazy val macros = project
@@ -64,10 +64,10 @@ lazy val macros = project
     name := "kryo-macros",
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
-      "com.esotericsoftware" % "kryo" % "4.0.1",
-      "joda-time" % "joda-time" % "2.8",
-      "org.joda" % "joda-convert" % "1.7",
-      "org.scalatest" %% "scalatest" % "3.0.3" % Test
+      "com.esotericsoftware" % "kryo" % "4.0.2",
+      "joda-time" % "joda-time" % "2.9.9",
+      "org.joda" % "joda-convert" % "2.0.1",
+      "org.scalatest" %% "scalatest" % "3.0.5-M1" % Test
     )
   )
 
@@ -76,9 +76,9 @@ lazy val benchmark = project
   .settings(commonSettings: _*)
   .settings(
     name := "kryo-benchmark",
-    publish := (),
+    publish := ((): Unit),
     libraryDependencies ++= Seq(
-      "pl.project13.scala" % "sbt-jmh-extras" % "0.3.2",
-      "org.scalatest" %% "scalatest" % "3.0.3" % Test
+      "pl.project13.scala" % "sbt-jmh-extras" % "0.3.4",
+      "org.scalatest" %% "scalatest" % "3.0.5-M1" % Test
     )
   ).dependsOn(macros)
