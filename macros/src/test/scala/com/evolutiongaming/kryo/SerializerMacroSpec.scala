@@ -61,7 +61,10 @@ object ValWithPrivateConstructor {
 class SerializerMacroSpec extends WordSpec with Matchers {
   object SuitEnum extends Enumeration {
     type SuitEnum = Value
-    val Hearts, Spades, Diamonds, Clubs = Value
+    val Hearts: SuitEnum = Value(1, "Hearts") // WARNING: for most efficiency set names explicitly in your enumerations,
+    val Spades: SuitEnum = Value(2, "Spades") // you still not sure then please look and check that following
+    val Diamonds: SuitEnum = Value(3, "Diamonds") // synchronized block will not affect your system and its performance:
+    val Clubs: SuitEnum = Value(4, "Clubs") // https://github.com/scala/scala/blob/1692ae306dc9a5ff3feebba6041348dfdee7cfb5/src/library/scala/Enumeration.scala#L203
   }
 
   lazy val kryo = new Kryo
@@ -188,6 +191,7 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       verify(Serializer.make[FirstOrderType[Id[Int], Id[String]]],
         FirstOrderType[Id[Int], Id[String]](Id(1), Id("VVV"), Some(Id(2)), List(Id("VVV"), Id("WWW"))))
     }
+
     "don't generate serializer for first-order types that are specified using 'Any' type parameter" in {
       assert(intercept[TestFailedException](assertCompiles {
         """case class FirstOrderType[A](a: A)
@@ -362,7 +366,8 @@ class SerializerMacroSpec extends WordSpec with Matchers {
       case class Game(gameType: GameType)
 
       object ActionType extends Enumeration {
-        val StartBetting, StopBetting = Value
+        val StartBetting = Value(1, "StartBetting")
+        val StopBetting = Value(2, "StopBetting")
       }
 
       trait Command
