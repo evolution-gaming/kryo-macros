@@ -74,9 +74,12 @@ For more examples, please, check out
 
 ## How to develop
 
-### Run tests, check coverage & binary compatibility for both Scala versions
+### Run tests, check coverage & binary compatibility for both supported Scala versions
 ```sh
-sbt clean +coverage +test +coverageReport +mimaReportBinaryIssues
+sbt ++2.11.12 clean coverage test coverageReport mimaReportBinaryIssues
+sbt ++2.12.6 clean coverage test coverageReport mimaReportBinaryIssues
+sbt ++2.13.0-M3 clean coverage test coverageReport mimaReportBinaryIssues
+sbt ++2.13.0-M4 clean compile
 ```
 
 ### Run benchmarks
