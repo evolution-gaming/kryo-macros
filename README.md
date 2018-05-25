@@ -22,7 +22,7 @@ resolvers += Resolver.bintrayRepo("evolutiongaming", "maven")
 
 Add the library to your dependencies list
 ```sbt
-libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.1.8"
+libraryDependencies += "com.evolutiongaming" %% "kryo-macros" % "1.2.0"
 ```
 
 Generate some serializers for your case classes
