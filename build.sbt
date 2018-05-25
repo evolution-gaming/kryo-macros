@@ -64,7 +64,7 @@ lazy val kryo = project.in(file("."))
 
 lazy val macros = project
   .settings(commonSettings: _*)
-  .settings(mimaSettings: _*)
+//  .settings(mimaSettings: _*)
   .settings(
     name := "kryo-macros",
     libraryDependencies ++= Seq(
