@@ -79,8 +79,11 @@ class SerializerMacroSpec extends WordSpec with Matchers {
     "serialize and deserialize standard types" in {
       case class Types(str: String, bd: BigDecimal, id: UUID, dt: DateTime, inst: Instant, dur: FiniteDuration)
 
-      verify(Serializer.make[Types], Types("test", 3, new UUID(1L, 2L), DateTime.now(), Instant.now(),
-        FiniteDuration(1234, TimeUnit.MILLISECONDS)))
+      verify(Serializer.make[Types], Types(
+        "test", 3, new UUID(1L, 2L), DateTime.now(),
+        Instant.parse("2018-09-23T14:59:59.100026316Z"),
+        FiniteDuration(1234, TimeUnit.MILLISECONDS)
+      ))
     }
 
     /**

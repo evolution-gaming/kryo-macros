@@ -124,7 +124,7 @@ object Serializer {
           } else if (tpe =:= typeOf[DateTime]) {
             q"output.writeLong($arg.getMillis)"
           } else if (tpe =:= typeOf[Instant]) {
-            q"output.writeLong($arg.toEpochMilli)"
+            q"output.writeLong($arg.getEpochSecond); output.writeInt($arg.getNano)"
           } else if (tpe =:= typeOf[FiniteDuration]) {
             q"output.writeLong($arg.toMillis)"
           } else if (tpe <:< typeOf[Option[_]]) withWriterFor(tpe, arg) {
@@ -206,7 +206,7 @@ object Serializer {
           } else if (tpe =:= typeOf[DateTime]) {
             q"new org.joda.time.DateTime(input.readLong)"
           } else if (tpe =:= typeOf[Instant]) {
-            q"java.time.Instant.ofEpochMilli(input.readLong)"
+            q"java.time.Instant.ofEpochSecond(input.readLong, input.readInt)"
           } else if (tpe =:= typeOf[FiniteDuration]) {
             q"new scala.concurrent.duration.FiniteDuration(input.readLong, java.util.concurrent.TimeUnit.MILLISECONDS).toCoarsest.asInstanceOf[scala.concurrent.duration.FiniteDuration]"
           } else if (tpe <:< typeOf[Option[_]]) withReaderFor(tpe) {
