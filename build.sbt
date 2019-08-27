@@ -30,7 +30,7 @@ def mimaSettings = mimaDefaultSettings ++ Seq(
 lazy val commonSettings = Seq(
   organization := "com.evolutiongaming",
   scalaVersion := "2.13.0",
-  crossScalaVersions := Seq("2.13.0", "2.12.8", "2.11.12"),
+  crossScalaVersions := Seq("2.13.0", "2.12.8"),
   releaseCrossBuild := true,
   startYear := Some(2016),
   organizationName := "Evolution Gaming",
@@ -50,7 +50,6 @@ lazy val commonSettings = Seq(
     "-Xmacro-settings:print-serializers"
   ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, x)) if x >= 12 => Seq("-opt:l:method")
-    case Some((2, x)) if x == 11 => Seq("-Ybackend:GenBCode", "-Ydelambdafy:inline")
     case _ => Seq()
   })
 )
