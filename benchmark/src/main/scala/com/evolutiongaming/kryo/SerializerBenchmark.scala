@@ -2,7 +2,6 @@ package com.evolutiongaming.kryo
 
 import java.util.concurrent.TimeUnit
 
-import com.esotericsoftware.kryo.{Kryo, Serializer}
 import com.esotericsoftware.kryo.io.{Input, Output}
 import org.openjdk.jmh.annotations._
 
@@ -25,17 +24,17 @@ import scala.collection.mutable
   "-XX:+AlwaysPreTouch"
 ))
 class SerializerBenchmark {
-  private var kryo = new Kryo
-  private var buf = new Array[Byte](1024)
-  private var in = new Input(buf)
-  private var out = new Output(buf)
-  private var anyRefsSerializer = Serializer.make[AnyRefs]
-  private var iterablesSerializer = Serializer.make[Iterables]
-  private var mapsSerializer = Serializer.make[Maps]
-  private var mutableMapsSerializer = Serializer.make[MutableMaps]
-  private var intAndLongMapsSerializer = Serializer.make[IntAndLongMaps]
-  private var bitSetsSerializer = Serializer.make[BitSets]
-  private var primitivesSerializer = Serializer.make[Primitives]
+  private val kryo = new com.esotericsoftware.kryo.Kryo
+  private val buf = new Array[Byte](1024)
+  private val in = new Input(buf)
+  private val out = new Output(buf)
+  private val anyRefsSerializer = Serializer.make[AnyRefs]
+  private val iterablesSerializer = Serializer.make[Iterables]
+  private val mapsSerializer = Serializer.make[Maps]
+  private val mutableMapsSerializer = Serializer.make[MutableMaps]
+  private val intAndLongMapsSerializer = Serializer.make[IntAndLongMaps]
+  private val bitSetsSerializer = Serializer.make[BitSets]
+  private val primitivesSerializer = Serializer.make[Primitives]
   var anyRefsObj = AnyRefs("s", 1, Some("os"))
   var iterablesObj = Iterables(List("1", "2", "3"), Set(4, 5, 6), List(Set(1, 2), Set()))
   var mapsObj = Maps(Map("1" -> 1.1, "2" -> 2.2), Map(1 -> Map(3L -> 3.3), 2 -> Map.empty[Long, Double]))
@@ -67,7 +66,7 @@ class SerializerBenchmark {
   @Benchmark
   def writeThanReadPrimitives(): Primitives = writeThanRead(primitivesSerializer, primitivesObj)
 
-  private def writeThanRead[T](s: Serializer[T], obj: T): T = {
+  private def writeThanRead[T](s: com.esotericsoftware.kryo.Serializer[T], obj: T): T = {
     out.setBuffer(buf)
     kryo.writeObject(out, obj, s)
     in.setBuffer(buf)

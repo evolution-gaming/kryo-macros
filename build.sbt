@@ -29,8 +29,8 @@ def mimaSettings = mimaDefaultSettings ++ Seq(
 
 lazy val commonSettings = Seq(
   organization := "com.evolutiongaming",
-  scalaVersion := "2.12.6",
-  crossScalaVersions := Seq("2.13.0-M4", "2.13.0-M3", "2.12.6", "2.11.12"),
+  scalaVersion := "2.13.0",
+  crossScalaVersions := Seq("2.13.0", "2.12.8", "2.11.12"),
   releaseCrossBuild := true,
   startYear := Some(2016),
   organizationName := "Evolution Gaming",
@@ -47,7 +47,6 @@ lazy val commonSettings = Seq(
     "-deprecation",
     "-Xlint",
     "-Ywarn-dead-code",
-    "-Xfuture",
     "-Xmacro-settings:print-serializers"
   ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
     case Some((2, x)) if x >= 12 => Seq("-opt:l:method")
@@ -64,48 +63,27 @@ lazy val kryo = project.in(file("."))
 
 lazy val macros = project
   .settings(commonSettings: _*)
-//  .settings(mimaSettings: _*)
+  .settings(mimaSettings: _*)
   .settings(
     name := "kryo-macros",
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "com.esotericsoftware" % "kryo" % "4.0.2",
       "joda-time" % "joda-time" % "2.9.9",
-      "org.joda" % "joda-convert" % "2.0.1"
-    ),
-    libraryDependencies ++= {
-      val scalaV = scalaVersion.value
-      CrossVersion.partialVersion(scalaV) match {
-        case Some((2, v)) if v >= 13 && scalaV != "2.13.0-M3" =>
-          // TODO scalatest for Scala 2.13.0-M4
-          Nil
-        case _ =>
-          Seq(
-            "org.scalatest" %% "scalatest" % "3.0.5-M1" % Test
-          )
-      }
-    }
+      "org.joda" % "joda-convert" % "2.0.1",
+      "org.scalatest" %% "scalatest" % "3.0.8" % Test
+    )
   )
 
 lazy val benchmark = project
+  .dependsOn(macros)
   .enablePlugins(JmhPlugin)
   .settings(commonSettings: _*)
   .settings(
     name := "kryo-benchmark",
     publish := ((): Unit),
     libraryDependencies ++= Seq(
-      "pl.project13.scala" % "sbt-jmh-extras" % "0.3.4"
-    ),
-    libraryDependencies ++= {
-      val scalaV = scalaVersion.value
-      CrossVersion.partialVersion(scalaV) match {
-        case Some((2, v)) if v >= 13 && scalaV != "2.13.0-M3" =>
-          // TODO scalatest for Scala 2.13.0-M4
-          Nil
-        case _ =>
-          Seq(
-            "org.scalatest" %% "scalatest" % "3.0.5-M1" % Test
-          )
-      }
-    }
-  ).dependsOn(macros)
+      "pl.project13.scala" % "sbt-jmh-extras" % "0.3.7",
+      "org.scalatest" %% "scalatest" % "3.0.8" % Test
+    )
+  )
