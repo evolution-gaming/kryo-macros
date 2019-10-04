@@ -68,8 +68,8 @@ lazy val macros = project
     libraryDependencies ++= Seq(
       "org.scala-lang" % "scala-reflect" % scalaVersion.value,
       "com.esotericsoftware" % "kryo" % "4.0.2",
-      "joda-time" % "joda-time" % "2.9.9",
-      "org.joda" % "joda-convert" % "2.0.2",
+      "joda-time" % "joda-time" % "2.10.4",
+      "org.joda" % "joda-convert" % "2.0.1",
       "org.scalatest" %% "scalatest" % "3.0.8" % Test
     )
   )
