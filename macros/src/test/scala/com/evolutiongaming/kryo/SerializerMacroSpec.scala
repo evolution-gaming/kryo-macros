@@ -10,11 +10,12 @@ import com.esotericsoftware.kryo.io.{Input, Output}
 import com.esotericsoftware.{kryo => k}
 import org.joda.time.DateTime
 import org.scalatest.exceptions.TestFailedException
-import org.scalatest.{Matchers, WordSpec}
 
 import scala.collection.immutable.{BitSet, IntMap, List, LongMap}
 import scala.collection.mutable
 import scala.concurrent.duration._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 case class Id[A](value: A) extends AnyVal
 case class PlayerId(value: String) extends AnyVal
@@ -58,7 +59,7 @@ object ValWithPrivateConstructor {
   *
   * @author Alexander Nemish
   */
-class SerializerMacroSpec extends WordSpec with Matchers {
+class SerializerMacroSpec extends AnyWordSpec with Matchers {
   object SuitEnum extends Enumeration {
     type SuitEnum = Value
     val Hearts: SuitEnum = Value(1, "Hearts") // WARNING: for most efficiency set names explicitly in your enumerations,
