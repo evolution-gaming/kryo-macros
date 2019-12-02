@@ -1,8 +1,9 @@
 package com.evolutiongaming.kryo
 
-import org.scalatest.{Matchers, WordSpec}
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class SerializerBenchmarkSpec extends WordSpec with Matchers {
+class SerializerBenchmarkSpec extends AnyWordSpec with Matchers {
   val benchmark = new SerializerBenchmark
 
   "SerializerBenchmark" should {
