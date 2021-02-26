@@ -29,8 +29,8 @@ def mimaSettings = mimaDefaultSettings ++ Seq(
 
 lazy val commonSettings = Seq(
   organization := "com.evolutiongaming",
-  scalaVersion := "2.13.0",
-  crossScalaVersions := Seq("2.13.0", "2.12.8"),
+  scalaVersion := "2.13.5",
+  crossScalaVersions := Seq("2.13.5", "2.12.8"),
   releaseCrossBuild := true,
   startYear := Some(2016),
   organizationName := "Evolution Gaming",
