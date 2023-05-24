@@ -70,7 +70,7 @@ lazy val macros = project
       "com.esotericsoftware" % "kryo" % "4.0.2",
       "joda-time" % "joda-time" % "2.10.4",
       "org.joda" % "joda-convert" % "2.2.1",
-      "org.scalatest" %% "scalatest" % "3.2.3" % Test
+      "org.scalatest" %% "scalatest" % "3.2.16" % Test
     )
   )
 
@@ -83,6 +83,6 @@ lazy val benchmark = project
     publish := ((): Unit),
     libraryDependencies ++= Seq(
       "pl.project13.scala" % "sbt-jmh-extras" % "0.3.7",
-      "org.scalatest" %% "scalatest" % "3.2.3" % Test
+      "org.scalatest" %% "scalatest" % "3.2.16" % Test
     )
   )
